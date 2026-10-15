@@ -80,6 +80,81 @@ async function assertWindowBranding(app, dir) {
   }
   console.log("Native window taskbar identity, relaunch metadata, and original icon pixels: PASS");
 }
+async function assertNativeClipboard(app, page) {
+  // Exercise the real trusted IPC and editor commands without reading or
+  // replacing the user's system clipboard during an automated test.
+  await app.evaluate(({ clipboard }) => {
+    globalThis.__notesClipboardTest = {
+      readText: clipboard.readText,
+      readHTML: clipboard.readHTML,
+      write: clipboard.write,
+      writes: [],
+    };
+    clipboard.readText = () => "Native clipboard fixture";
+    clipboard.readHTML = () =>
+      "<p><strong>Native clipboard fixture</strong><script>window.__unsafeClipboard = true</script></p>";
+    clipboard.write = (content) =>
+      globalThis.__notesClipboardTest.writes.push(content);
+  });
+  try {
+    const content = page.getByLabel("Note content");
+    await content.press("Control+End");
+    await content.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "Paste", exact: true }).click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".note-prose strong")?.textContent ===
+        "Native clipboard fixture",
+    );
+    assert.equal(
+      await page.evaluate(() => window.__unsafeClipboard),
+      undefined,
+    );
+    await content.press("Control+a");
+    await content.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
+    const copied = await app.evaluate(async () => {
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        const content = globalThis.__notesClipboardTest.writes.at(-1);
+        if (content) return content;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw new Error(
+        "The context menu did not reach the native clipboard bridge",
+      );
+    });
+    assert.match(copied.text, /Native clipboard fixture/);
+    assert.match(copied.html, /<strong>Native clipboard fixture<\/strong>/);
+    assert.ok(!copied.html.includes("<script"));
+    const invalid = await page.evaluate(async () => {
+      try {
+        await window.desktop.writeClipboard({ text: 123, html: "" });
+        return false;
+      } catch (error) {
+        return /Clipboard text/.test(error.message);
+      }
+    });
+    assert.equal(
+      invalid,
+      true,
+      "The native clipboard bridge must reject unsupported data",
+    );
+    await content.fill("Saved by the real Electron IPC bridge.");
+    await page.getByText("All changes saved", { exact: true }).waitFor();
+    console.log(
+      "Native context-menu clipboard IPC, rich text sanitization, and payload validation: PASS",
+    );
+  } finally {
+    await app.evaluate(({ clipboard }) => {
+      const original = globalThis.__notesClipboardTest;
+      clipboard.readText = original.readText;
+      clipboard.readHTML = original.readHTML;
+      clipboard.write = original.write;
+      delete globalThis.__notesClipboardTest;
+    });
+  }
+}
 async function main() {
   const dir = path.resolve("test-results/desktop-" + Date.now());
   await fs.mkdir(dir, { recursive: true });
@@ -131,7 +206,9 @@ async function main() {
     console.log(
       "Desktop renderer, secure protocol, IPC saving, and reload: PASS",
     );
+    await assertNativeClipboard(app, page);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Fonts & writing", exact: true }).click();
     await page.getByLabel("Interface font", { exact: true }).selectOption("roboto");
     await page.getByLabel("Note font", { exact: true }).selectOption("lora");
     const fontFaces = await page.evaluate(async () => ({

@@ -11,6 +11,7 @@ const {
   Notification,
   Tray,
   nativeImage,
+  clipboard,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -106,11 +107,43 @@ const dataPath = () => path.join(app.getPath("userData"), "notes-data.json");
 const trusted = (event) =>
   event.sender === mainWindow?.webContents &&
   event.senderFrame === mainWindow?.webContents.mainFrame;
+const clipboardLimit = 5 * 1024 * 1024;
+function validateClipboardContent(value) {
+  if (
+    !value ||
+    typeof value.text !== "string" ||
+    typeof value.html !== "string" ||
+    Buffer.byteLength(value.text, "utf8") > clipboardLimit ||
+    Buffer.byteLength(value.html, "utf8") > clipboardLimit
+  )
+    throw new Error(
+      "Clipboard text is too large or unsupported. Try pasting a smaller selection.",
+    );
+  return { text: value.text, html: value.html };
+}
+// The editor invokes these only for explicit Cut, Copy, and Paste actions.
+// Keep the bridge limited to text/HTML and the trusted main window.
+ipcMain.handle("notes:read-clipboard", (event) => {
+  if (!trusted(event)) throw new Error("Untrusted source");
+  return validateClipboardContent({
+    text: clipboard.readText(),
+    html: clipboard.readHTML(),
+  });
+});
+ipcMain.handle("notes:write-clipboard", (event, content) => {
+  if (!trusted(event)) throw new Error("Untrusted source");
+  clipboard.write(validateClipboardContent(content));
+  return { ok: true };
+});
 ipcMain.handle("notes:test-reminder", async (event) => {
   if (!trusted(event)) throw new Error("Untrusted source");
   try {
     const result = await reminderDelivery.deliver(
-      { id: "notes-reminder-test", title: "Notes reminder test", reminderAt: Date.now() },
+      {
+        id: "notes-reminder-test",
+        title: "Notes reminder test",
+        reminderAt: Date.now(),
+      },
       null,
       { isTest: true },
     );
@@ -126,7 +159,11 @@ ipcMain.handle("notes:retry-reminder", async (event, noteId) => {
   await pendingWrite.catch(() => {});
   if (await reminderScheduler.retryReminder(noteId))
     return { ok: true, reminderNotifiedAt: null };
-  return { ok: false, error: "This reminder could not be shown again. Check its saved time and try again." };
+  return {
+    ok: false,
+    error:
+      "This reminder could not be shown again. Check its saved time and try again.",
+  };
 });
 ipcMain.handle("notes:load", async (event) => {
   if (!trusted(event)) throw new Error("Untrusted source");
@@ -243,7 +280,10 @@ app.whenReady().then(() => {
     },
   });
   reminderScheduler = createReminderScheduler({
-    deliveryPath: path.join(app.getPath("userData"), "reminder-deliveries.json"),
+    deliveryPath: path.join(
+      app.getPath("userData"),
+      "reminder-deliveries.json",
+    ),
     notify: (note, receipt) => reminderDelivery.deliver(note, receipt),
   });
   const assets = path.resolve(__dirname, "../dist");

@@ -26,6 +26,7 @@ test("font search, independent note fonts, persistence, and reset work offline",
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Fonts & writing", exact: true }).click();
   await expect(
     page.getByLabel("Interface font", { exact: true }).locator("option"),
   ).toHaveCount(62);
@@ -71,6 +72,7 @@ test("font search, independent note fonts, persistence, and reset work offline",
     /Lora/,
   );
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Fonts & writing", exact: true }).click();
   await expect(page.getByLabel("Interface font", { exact: true })).toHaveValue(
     "roboto",
   );

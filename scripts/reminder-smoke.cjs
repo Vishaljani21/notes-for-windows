@@ -69,6 +69,7 @@ async function main() {
     await page.getByLabel("Note title").waitFor();
     await page.getByText("All changes saved", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Reminders", exact: true }).click();
     const traySetting = page.getByRole("checkbox", {
       name: "Keep reminders active in the system tray",
       exact: true,

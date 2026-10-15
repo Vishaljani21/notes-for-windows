@@ -50,9 +50,6 @@ import {
   X,
   Minus,
   Square,
-  Sun,
-  Moon,
-  Monitor,
   Download,
   Upload,
   RotateCcw,
@@ -71,8 +68,9 @@ import {
   Code2,
 } from "lucide-react";
 import NoteEditor, { cleanHTML } from "./Editor.jsx";
-import FontPicker from "./FontPicker.jsx";
-import { getFontStack, FONTS } from "./fonts.mjs";
+import SettingsDialog from "./SettingsDialog.jsx";
+import ContextMenu from "./ContextMenu.jsx";
+import { getFontStack } from "./fonts.mjs";
 import { ScanTool, fileDataURL } from "./MediaTools.jsx";
 import ReminderDialog from "./ReminderDialog.jsx";
 import { formatReminder, isReminderTimestamp } from "./reminders.mjs";
@@ -152,7 +150,14 @@ function MenuItem({
     </button>
   );
 }
-function Modal({ children, close, wide = false }) {
+function Modal({
+  children,
+  close,
+  wide = false,
+  className = "",
+  labelledBy,
+  initialFocus,
+}) {
   const root = useRef(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -176,14 +181,17 @@ function Modal({ children, close, wide = false }) {
       }
     };
     document.addEventListener("keydown", handle);
-    setTimeout(
+    const focusTimer = setTimeout(
       () =>
         root.current
-          ?.querySelector("[autofocus], input, textarea, button")
+          ?.querySelector(
+            initialFocus || "[autofocus], input, textarea, button",
+          )
           ?.focus(),
       30,
     );
     return () => {
+      clearTimeout(focusTimer);
       document.removeEventListener("keydown", handle);
       previous?.focus?.();
     };
@@ -197,7 +205,8 @@ function Modal({ children, close, wide = false }) {
         ref={root}
         role="dialog"
         aria-modal="true"
-        className={`modal ${wide ? "wide" : ""}`}
+        aria-labelledby={labelledBy}
+        className={`modal ${wide ? "wide" : ""} ${className}`}
       >
         <button
           className="modal-close icon-button"
@@ -245,7 +254,14 @@ export default function App() {
     [editor, setEditor] = useState(null),
     [selectionTick, setSelectionTick] = useState(0);
   const [find, setFind] = useState("");
+  const [noteContext, setNoteContext] = useState(null);
   const [reminderError, setReminderError] = useState(null);
+  useEffect(() => {
+    setNoteContext(null);
+  }, [selected, scope, query, tagFilter, modal]);
+  useEffect(() => {
+    if (menu) setNoteContext(null);
+  }, [menu]);
   useEffect(() => {
     const compact = matchMedia("(max-width: 820px)");
     const hideCompactNavigation = () => {
@@ -647,10 +663,151 @@ export default function App() {
   function trashNote(note = current) {
     if (!note) return;
     updateNote(note.id, { deletedAt: Date.now() });
-    const next = visible.find((n) => n.id !== note.id);
-    setSelected(next?.id || null);
+    if (selected === note.id) {
+      const next = visible.find((n) => n.id !== note.id);
+      setSelected(next?.id || null);
+    }
     setMenu(null);
+    setNoteContext(null);
     toast("Note moved to Recently Deleted.");
+  }
+  function duplicateNote(note = current) {
+    // Keep locked content encrypted, including while its editor is unlocked.
+    if (!note || note.locked || note.deletedAt) return;
+    const id = uid(),
+      now = Date.now();
+    setLibrary((l) => ({
+      ...l,
+      notes: [
+        {
+          ...note,
+          id,
+          title: (note.title || "Untitled") + " — Copy",
+          reminderAt: null,
+          reminderNotifiedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        ...l.notes,
+      ],
+    }));
+    setSelected(id);
+    toast("Note duplicated.");
+  }
+  function showNoteContext(event, note) {
+    event.preventDefault();
+    event.stopPropagation();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setMenu(null);
+    setNoteContext({
+      noteId: note.id,
+      x: event.clientX || bounds.left + Math.min(bounds.width / 2, 120),
+      y: event.clientY || bounds.top + Math.min(bounds.height / 2, 35),
+    });
+  }
+  function noteDialog(note, type) {
+    setSelected(note.id);
+    setFind("");
+    setModal({ type });
+  }
+  function restoreNote(note) {
+    updateNote(note.id, { deletedAt: null });
+    navigate("all");
+    setSelected(note.id);
+    toast("Note restored.");
+  }
+  function noteContextItems(note) {
+    if (note.deletedAt)
+      return [
+        {
+          label: "Restore note",
+          icon: RotateCcw,
+          onSelect: () => restoreNote(note),
+        },
+        {
+          label: "Note details",
+          icon: Info,
+          onSelect: () => noteDialog(note, "info"),
+        },
+        { separator: true },
+        {
+          label: "Delete permanently…",
+          icon: Trash2,
+          danger: true,
+          onSelect: () => noteDialog(note, "deleteNote"),
+        },
+      ];
+    const contentLocked = note.locked && !unlocked[note.id];
+    return [
+      {
+        label: "Open note",
+        icon: FileText,
+        onSelect: () => {
+          setSelected(note.id);
+          setFind("");
+          requestAnimationFrame(() =>
+            document
+              .querySelector(
+                contentLocked ? ".locked-screen button" : ".note-title",
+              )
+              ?.focus(),
+          );
+        },
+      },
+      {
+        label: note.pinned ? "Unpin note" : "Pin note",
+        icon: Pin,
+        onSelect: () => updateNote(note.id, { pinned: !note.pinned }),
+      },
+      {
+        label: note.reminderAt ? "Edit reminder…" : "Set reminder…",
+        icon: Bell,
+        disabled: !!contentLocked,
+        onSelect: () => noteDialog(note, "reminder"),
+      },
+      { separator: true },
+      {
+        label: "Move to folder…",
+        icon: Folder,
+        onSelect: () => noteDialog(note, "move"),
+      },
+      {
+        label: "Edit tags…",
+        icon: Hash,
+        disabled: !!contentLocked,
+        onSelect: () => noteDialog(note, "tags"),
+      },
+      {
+        label: "Duplicate note",
+        icon: Copy,
+        disabled: !!note.locked,
+        onSelect: () => duplicateNote(note),
+      },
+      {
+        label: note.locked
+          ? contentLocked
+            ? "Unlock note…"
+            : "Close locked note"
+          : "Lock note…",
+        icon: contentLocked || !note.locked ? LockKeyhole : LockKeyholeOpen,
+        onSelect: () =>
+          note.locked && !contentLocked
+            ? lockAgain(note)
+            : noteDialog(note, contentLocked ? "unlock" : "lock"),
+      },
+      {
+        label: "Note details",
+        icon: Info,
+        onSelect: () => noteDialog(note, "info"),
+      },
+      { separator: true },
+      {
+        label: "Delete note",
+        icon: Trash2,
+        danger: true,
+        onSelect: () => trashNote(note),
+      },
+    ];
   }
   function openNote(id) {
     const note = notes.find((n) => n.id === id && !n.deletedAt);
@@ -739,8 +896,8 @@ export default function App() {
       toast("Could not attach file: " + e.message);
     }
   }
-  async function lockAgain() {
-    const id = current.id;
+  async function lockAgain(note = current) {
+    const id = note.id;
     const u = unlocked[id];
     if (!u) return;
     const encrypted = await encryptNote(
@@ -1190,9 +1347,21 @@ export default function App() {
                     className={`note-card ${selected === n.id ? "selected" : ""}`}
                     aria-pressed={selected === n.id}
                     title={n.title || "New Note"}
+                    aria-haspopup="menu"
+                    aria-expanded={noteContext?.noteId === n.id}
+                    onContextMenu={(e) => showNoteContext(e, n)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "ContextMenu" ||
+                        (e.shiftKey && e.key === "F10")
+                      ) {
+                        showNoteContext(e, n);
+                      }
+                    }}
                     onClick={() => {
                       setSelected(n.id);
                       setFind("");
+                      setNoteContext(null);
                     }}
                   >
                     <div className="note-card-heading">
@@ -1510,7 +1679,7 @@ export default function App() {
               />
               {menu === "lock" && (
                 <div className="dropdown right">
-                  <MenuItem icon={LockKeyhole} onClick={lockAgain}>
+                  <MenuItem icon={LockKeyhole} onClick={() => lockAgain()}>
                     Close this locked note
                   </MenuItem>
                   <MenuItem
@@ -1642,32 +1811,8 @@ export default function App() {
                   </MenuItem>
                   <MenuItem
                     icon={Copy}
-                    disabled={isLocked || !!current.deletedAt}
-                    onClick={() =>
-                      action(() => {
-                        const id = uid(),
-                          now = Date.now();
-                        setLibrary((l) => ({
-                          ...l,
-                          notes: [
-                            {
-                              ...current,
-                              id,
-                              title: current.title + " — Copy",
-                              locked: false,
-                              encrypted: null,
-                              reminderAt: null,
-                              reminderNotifiedAt: null,
-                              createdAt: now,
-                              updatedAt: now,
-                            },
-                            ...l.notes,
-                          ],
-                        }));
-                        setSelected(id);
-                        toast("Note duplicated.");
-                      })
-                    }
+                    disabled={!!current.locked || !!current.deletedAt}
+                    onClick={() => action(() => duplicateNote(current))}
                   >
                     Duplicate note
                   </MenuItem>
@@ -1910,10 +2055,35 @@ export default function App() {
           </button>
         </div>
       )}
+      {noteContext && notes.some((note) => note.id === noteContext.noteId) && (
+        <ContextMenu
+          position={noteContext}
+          label="Note actions"
+          items={noteContextItems(
+            notes.find((note) => note.id === noteContext.noteId),
+          )}
+          onClose={() => setNoteContext(null)}
+        />
+      )}
       {modal && (
         <Modal
           close={() => setModal(null)}
           wide={modal.type === "scan"}
+          className={modal.type === "settings" ? "settings-modal" : ""}
+          labelledBy={
+            modal.type === "settings"
+              ? "settings-title"
+              : modal.type === "reminder"
+                ? "reminder-dialog-title"
+                : undefined
+          }
+          initialFocus={
+            modal.type === "settings"
+              ? '[data-settings-initial="true"]'
+              : modal.type === "reminder"
+                ? "[data-reminder-initial]"
+                : undefined
+          }
         >
           <DialogContent
             modal={modal}
@@ -1927,6 +2097,7 @@ export default function App() {
             setLibrary={setLibrary}
             setSelected={setSelected}
             setSettings={setSettings}
+            saveStatus={saveStatus}
             setScope={setScope}
             toast={toast}
             insert={insert}
@@ -1954,6 +2125,7 @@ function DialogContent({
   setLibrary,
   setSelected,
   setSettings,
+  saveStatus,
   setScope,
   toast,
   insert,
@@ -1978,33 +2150,7 @@ function DialogContent({
     [smart, setSmart] = useState(!!modal.folder?.smartTag),
     [smartTag, setSmartTag] = useState(modal.folder?.smartTag || ""),
     [result, setResult] = useState("");
-  const [reminderTest, setReminderTest] = useState({ status: "idle", message: "" });
   const settings = library.settings;
-  async function testReminderAlert() {
-    if (reminderTest.status === "pending") return;
-    setReminderTest({ status: "pending", message: "Waiting for the test alert…" });
-    try {
-      const response = await window.desktop.testReminder();
-      if (!response?.ok)
-        throw new Error(
-          response?.error || "The test alert could not be shown. Please try again.",
-        );
-      clearReminderError();
-      setReminderTest({
-        status: "success",
-        message:
-          response.channel === "windows"
-            ? "The test alert was sent through Windows. If you did not see it, check Windows Settings → System → Notifications and Do not disturb."
-            : "The test reminder opened in a Notes popup. It stays visible until you dismiss it or open the note.",
-      });
-    } catch (error) {
-      setReminderTest({
-        status: "error",
-        message:
-          error?.message || "The test alert could not be shown. Please try again.",
-      });
-    }
-  }
   async function retryCurrentReminder() {
     const previousDelivery = current.reminderNotifiedAt;
     const response = await window.desktop.retryReminder(current.id);
@@ -2033,7 +2179,9 @@ function DialogContent({
         deliveryError={
           reminderError?.noteId === current?.id ? reminderError.message : ""
         }
-        onRetry={window.desktop?.retryReminder ? retryCurrentReminder : undefined}
+        onRetry={
+          window.desktop?.retryReminder ? retryCurrentReminder : undefined
+        }
         onSave={(patch) => {
           updateNote(current.id, patch);
           toast("Reminder saved.");
@@ -2696,169 +2844,16 @@ function DialogContent({
     );
   if (modal.type === "settings")
     return (
-      <div className="standard-dialog settings-dialog">
-        {heading(
-          Settings,
-          "Make a little space your own",
-          "Notes for Windows · Version 1.1.6",
-        )}
-        <div className="settings-section">
-          <h3>Appearance</h3>
-          <div className="theme-options">
-            {[
-              [Sun, "light", "Light"],
-              [Moon, "dark", "Dark"],
-              [Monitor, "system", "System"],
-            ].map(([Icon, key, label]) => (
-              <button
-                key={key}
-                className={settings.theme === key ? "selected" : ""}
-                onClick={() => setSettings({ theme: key })}
-              >
-                <Icon size={23} />
-                <span>{label}</span>
-                {settings.theme === key && <Check size={12} />}
-              </button>
-            ))}
-          </div>
-          <div className="settings-fonts">
-            <div className="settings-font-heading">
-              <h3>Fonts & writing</h3>
-              <button
-                className="text-button"
-                onClick={() =>
-                  setSettings({
-                    fontFamily: "system",
-                    noteFontFamily: "inherit",
-                  })
-                }
-              >
-                Reset fonts
-              </button>
-            </div>
-            <p className="helper">
-              {FONTS.length} choices across sans serif, serif, monospace,
-              handwriting, and Windows fonts. Bundled fonts work offline;
-              Windows fonts depend on what is installed on your computer.
-            </p>
-            <FontPicker
-              label="Interface font"
-              value={settings.fontFamily || "system"}
-              onChange={(fontFamily) => setSettings({ fontFamily })}
-            />
-            <FontPicker
-              label="Note font"
-              value={settings.noteFontFamily || "inherit"}
-              onChange={(noteFontFamily) => setSettings({ noteFontFamily })}
-              allowInherit
-            />
-          </div>
-          <label className="field-label interface-size-control">
-            Interface text size
-            <select
-              aria-label="Interface text size"
-              value={settings.uiScale || 1}
-              onChange={(e) => setSettings({ uiScale: Number(e.target.value) })}
-            >
-              <option value="1">Comfortable</option>
-              <option value="1.1">Large</option>
-              <option value="1.2">Extra large</option>
-            </select>
-          </label>
-          <p className="helper">
-            Adjust the sidebar, note list, menus, and buttons. Note text has its
-            own size setting below.
-          </p>
-          <label className="range-label">
-            <span>
-              Editor text size <strong>{settings.fontSize} px</strong>
-            </span>
-            <input
-              type="range"
-              min="14"
-              max="26"
-              value={settings.fontSize}
-              onChange={(e) =>
-                setSettings({ fontSize: Number(e.target.value) })
-              }
-            />
-          </label>
-        </div>
-        <div className="settings-section">
-          <h3>Reminders</h3>
-          <label className="toggle-row">
-            <span>
-              <strong>Keep reminders active in the system tray</strong>
-              <small>
-                Closing the window keeps Notes running. Choose Quit from its
-                tray icon to exit.
-              </small>
-            </span>
-            <input
-              type="checkbox"
-              aria-label="Keep reminders active in the system tray"
-              checked={settings.remindersInTray !== false}
-              disabled={!window.desktop}
-              onChange={(event) =>
-                setSettings({ remindersInTray: event.target.checked })
-              }
-            />
-          </label>
-          <p className="helper">
-            {window.desktop
-              ? "Notes shows a reminder popup while it is running, including in the system tray. Open Notes after starting Windows; reminders missed while it was closed appear when it opens again."
-              : "In-app reminders work while this tab stays open. Install the Windows app for notifications and system tray support."}
-          </p>
-          {window.desktop && (
-            <>
-              <button className="button" onClick={testReminderAlert} disabled={reminderTest.status === "pending" || !window.desktop.testReminder}>
-                <Bell size={16} /> {reminderTest.status === "pending" ? "Showing test alert…" : "Test reminder alert"}
-              </button>
-              <p className="helper">Notes reminder popups stay visible until you dismiss them or open the note.</p>
-              {reminderTest.message && <p className={reminderTest.status === "error" ? "form-error" : "helper"} role={reminderTest.status === "error" ? "alert" : "status"}>{reminderTest.message}</p>}
-              {reminderError && <p className="form-error" role="alert">{reminderError.message}</p>}
-            </>
-          )}
-        </div>
-        <div className="settings-section">
-          <h3>Your notes, your device</h3>
-          <p className="helper">
-            Notes and attachments save automatically. Export backups regularly
-            to keep a separate copy. This app does not connect to iCloud or sync
-            across devices.
-          </p>
-          <div className="button-row">
-            <button className="button" onClick={exportBackup}>
-              <Download size={15} /> Export backup
-            </button>
-            <button
-              className="button"
-              onClick={() => {
-                close();
-                backupInput.current.click();
-              }}
-            >
-              <Upload size={15} /> Import backup
-            </button>
-          </div>
-        </div>
-        <div className="settings-about">
-          <NotebookPen size={24} />
-          <div>
-            <strong>A familiar place. A fresh start.</strong>
-            <p>
-              An independent notes app inspired by Apple Notes.
-              <br />
-              Not affiliated with or endorsed by Apple.
-            </p>
-          </div>
-        </div>
-        <div className="dialog-actions">
-          <button className="button primary" onClick={close}>
-            Done
-          </button>
-        </div>
-      </div>
+      <SettingsDialog
+        settings={settings}
+        setSettings={setSettings}
+        saveStatus={saveStatus}
+        close={close}
+        exportBackup={exportBackup}
+        backupInput={backupInput}
+        reminderError={reminderError}
+        clearReminderError={clearReminderError}
+      />
     );
   if (modal.type === "shortcuts")
     return (

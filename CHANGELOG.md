@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.7 — 2026-10-16
+
+- Redesigned Settings with category navigation, a fixed header and footer, compact font previews, and clear save feedback.
+- Added keyboard navigation and layouts for smaller windows and larger interface text.
+- Added note-card context menus for common note actions and editor context menus for writing and formatting.
+- Refined the reminder date/time picker and popup alerts with clearer note context, readable due times, and easy-to-reach actions.
+
 ## 1.1.6 — 2026-10-16
 
 - Fixed the Electron taskbar icon caused by a development shortcut sharing the installed Notes app identity.

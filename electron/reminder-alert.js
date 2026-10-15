@@ -1,14 +1,34 @@
 const root = document.getElementById("reminders");
+const count = document.getElementById("reminder-count");
 function render(items) {
+  count.hidden = items.length < 2;
+  count.textContent = `${items.length} waiting`;
+  count.setAttribute("aria-label", `${items.length} reminders`);
   const fragment = document.createDocumentFragment();
   for (const item of items) {
     const article = document.createElement("article");
+    const eyebrow = document.createElement("div");
+    eyebrow.className = "reminder-eyebrow";
+    const dot = document.createElement("span");
+    dot.className = "reminder-dot";
+    dot.setAttribute("aria-hidden", "true");
+    eyebrow.append(dot, item.isTest ? "Test reminder" : "Reminder");
     const heading = document.createElement("h1");
     heading.textContent = item.title;
-    const detail = document.createElement("p");
-    detail.textContent = item.isTest
-      ? "Your reminder alerts are working."
-      : `Due ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(item.reminderAt)}`;
+    heading.title = item.title;
+    const detail = document.createElement("div");
+    detail.className = `reminder-due${item.isTest ? " is-test" : ""}`;
+    const clock = document.createElement("span");
+    clock.className = "due-clock";
+    clock.setAttribute("aria-hidden", "true");
+    const copy = document.createElement("div");
+    copy.className = "due-copy";
+    const time = document.createElement("strong");
+    time.textContent = item.isTest ? "Your reminder alerts are working." : new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(item.reminderAt);
+    const date = document.createElement("span");
+    date.textContent = item.isTest ? "You’re ready for your next reminder." : `Due ${new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(item.reminderAt)}`;
+    copy.append(time, date);
+    detail.append(clock, copy);
     const actions = document.createElement("div");
     actions.className = "actions";
     const dismiss = document.createElement("button");
@@ -19,7 +39,7 @@ function render(items) {
     open.textContent = item.isTest ? "Open Notes" : "Open note";
     open.addEventListener("click", () => window.reminderAlert.open(item.id));
     actions.append(dismiss, open);
-    article.append(heading, detail, actions);
+    article.append(eyebrow, heading, detail, actions);
     fragment.append(article);
   }
   root.replaceChildren(fragment);

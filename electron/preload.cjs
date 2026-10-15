@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld("desktop", {
   save: (data) => ipcRenderer.invoke("notes:save", data),
   exportFile: (name, text) => ipcRenderer.invoke("notes:export", name, text),
   openExternal: (url) => ipcRenderer.invoke("notes:external", url),
+  readClipboard: () => ipcRenderer.invoke("notes:read-clipboard"),
+  writeClipboard: (content) =>
+    ipcRenderer.invoke("notes:write-clipboard", content),
   testReminder: () => ipcRenderer.invoke("notes:test-reminder"),
   retryReminder: (noteId) => ipcRenderer.invoke("notes:retry-reminder", noteId),
   minimize: () => ipcRenderer.send("window:minimize"),

@@ -1,0 +1,102 @@
+.notes-context-root {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+.notes-context-menu {
+  position: fixed;
+  min-width: 222px;
+  max-width: min(310px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow:
+    0 10px 36px #0003,
+    0 2px 6px #0001;
+  pointer-events: auto;
+  font-family: var(--font-ui);
+  font-size: calc(13px * var(--ui-scale, 1));
+  line-height: 1.35;
+}
+.notes-context-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 33px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  outline-offset: -2px;
+}
+.notes-context-item:hover,
+.notes-context-item:focus-visible,
+.notes-context-item[aria-expanded="true"] {
+  background: var(--hover);
+}
+.notes-context-item:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.notes-context-item[aria-disabled="true"] {
+  opacity: 0.42;
+  cursor: default;
+  background: transparent;
+}
+.notes-context-item.is-danger {
+  color: var(--danger);
+}
+.notes-context-icon {
+  display: inline-flex;
+  justify-content: center;
+  flex: 0 0 16px;
+  color: var(--muted);
+}
+.notes-context-label {
+  flex: 1;
+}
+.notes-context-shortcut {
+  color: var(--muted);
+  font-size: calc(11px * var(--ui-scale, 1));
+}
+.notes-context-check {
+  color: var(--accent);
+}
+.notes-context-separator {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--border);
+}
+.editor-context-error {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.editor-context-error button {
+  display: inline-flex;
+  padding: 3px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}

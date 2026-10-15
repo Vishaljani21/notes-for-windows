@@ -45,13 +45,27 @@ $notesDesktopLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory'))
 $notesStartLink = Join-Path ([Environment]::GetFolderPath('Programs')) 'Notes for Windows.lnk'
 foreach ($notesLinkPath in @($notesDesktopLink, $notesStartLink)) {
   $notesLink = $notesLinkShell.CreateShortcut($notesLinkPath)
+  $notesNeedsSave = $notesLink.TargetPath -ne $notesInstalledExe -or
+    $notesLink.WorkingDirectory -ne $notesInstallDir -or
+    $notesLink.IconLocation -ne ($notesShortcutIcon + ',0') -or
+    ($notesLinkPath -eq $notesDesktopLink -and $notesLink.Hotkey -notin @('CTRL+ALT+N', 'Alt+Ctrl+N'))
   $notesLink.TargetPath = $notesInstalledExe
   $notesLink.WorkingDirectory = $notesInstallDir
   $notesLink.IconLocation = $notesShortcutIcon + ',0'
   $notesLink.Description = 'Open Notes for Windows'
   $notesLink.WindowStyle = 1
   if ($notesLinkPath -eq $notesDesktopLink) { $notesLink.Hotkey = 'CTRL+ALT+N' }
-  $notesLink.Save()
+  # Avoid rewriting a link already created by the installer while OneDrive
+  # may be syncing the Desktop. Retry a needed metadata update briefly.
+  if ($notesNeedsSave) {
+    for ($notesShortcutAttempt = 0; $notesShortcutAttempt -lt 3; $notesShortcutAttempt++) {
+      try { $notesLink.Save(); break }
+      catch {
+        if ($notesShortcutAttempt -eq 2) { throw }
+        Start-Sleep -Milliseconds 500
+      }
+    }
+  }
   [NotesShortcutIconRefresh]::SHChangeNotify(0x00002000, 0x0005, $notesLinkPath, [IntPtr]::Zero)
 }
 # Native notification tests in an unpackaged Electron process can leave a

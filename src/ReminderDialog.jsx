@@ -1,5 +1,5 @@
 import React, { useId, useState } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, CalendarDays, Check, Clock3, Info } from "lucide-react";
 import {
   formatReminder,
   normalizeReminder,
@@ -8,6 +8,7 @@ import {
   toReminderInput,
   validateReminderTime,
 } from "./reminders.mjs";
+import "./reminder-dialog.css";
 
 export default function ReminderDialog({
   note,
@@ -32,6 +33,9 @@ export default function ReminderDialog({
   const helpId = useId();
   const errorId = useId();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const selectedTime = parseReminderInput(value);
+  const delivered = Boolean(reminder.reminderNotifiedAt);
+  const overdue = Boolean(reminder.reminderAt && reminder.reminderAt <= Date.now());
 
   function choosePreset(next) {
     setPreset(next);
@@ -92,90 +96,47 @@ export default function ReminderDialog({
       onSubmit={submit}
       noValidate
     >
-      <div className="dialog-icon">
-        <Bell size={26} />
-      </div>
-      <h2>{reminder.reminderAt ? "Edit reminder" : "Remind me"}</h2>
-      <p className="dialog-description reminder-note-name">
-        {note?.title || "Untitled"}
-      </p>
-      <div
-        className="button-row reminder-presets"
-        aria-label="Quick reminder times"
-      >
-        {[
-          ["minute", "In 1 minute"],
-          ["hour", "In 1 hour"],
-          ["tomorrow", "Tomorrow, 9 AM"],
-          ["week", "In a week, 9 AM"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={`button ${preset === id ? "primary" : ""}`}
-            aria-pressed={preset === id}
-            disabled={busy || retrying}
-            onClick={() => choosePreset(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <label className="field-label" htmlFor={inputId}>
-        Date and time
-        <input
-          id={inputId}
-          type="datetime-local"
-          value={value}
-          min={toReminderInput(Date.now())}
-          max="2099-12-31T23:59"
-          step="60"
-          required
-          disabled={busy || retrying}
-          aria-invalid={Boolean(error)}
-          aria-describedby={`${helpId}${error ? ` ${errorId}` : ""}`}
-          onChange={(event) => {
-            setValue(event.target.value);
-            setPreset("custom");
-            setError("");
-          }}
-        />
-      </label>
-      <p className="reminder-timezone" id={helpId}>
-        Your local time{timezone ? ` · ${timezone.replaceAll("_", " ")}` : ""}.
-      </p>
-      {reminder.reminderAt && (
-        <p className="reminder-status">
-          {reminder.reminderNotifiedAt
-            ? `Last delivered ${formatReminder(reminder.reminderNotifiedAt)}.`
-            : reminder.reminderAt <= Date.now()
-              ? "This reminder is overdue. Choose a new time or remove it."
-              : `Currently set for ${formatReminder(reminder.reminderAt)}.`}
-        </p>
-      )}
-      {desktop && onRetry && reminder.reminderAt && reminder.reminderAt <= Date.now() && (
-        <div className="reminder-retry">
-          <button type="button" className="button" onClick={retry} disabled={busy || retrying}>
-            <Bell size={16} /> {retrying ? "Showing reminder…" : "Show reminder again"}
-          </button>
-          <p className="helper">Use this if an earlier reminder was missed.</p>
+      <header className="reminder-dialog-header">
+        <span className="reminder-dialog-icon"><Bell size={23} strokeWidth={1.7} aria-hidden="true" /></span>
+        <div><h2 id="reminder-dialog-title">{reminder.reminderAt ? "Edit reminder" : "Remind me"}</h2><p>A little nudge for something that matters.</p></div>
+      </header>
+      <div className="reminder-dialog-content">
+        <div className="reminder-note-context"><span>For this note</span><strong className="reminder-note-name" title={note?.title || "Untitled"}>{note?.title || "Untitled"}</strong></div>
+        <div className="reminder-section-heading"><Clock3 size={16} aria-hidden="true" /><h3>Quick times</h3></div>
+        <div className="reminder-presets" role="group" aria-label="Quick reminder times">
+          {[
+            ["minute", "In 1 minute"],
+            ["hour", "In 1 hour"],
+            ["tomorrow", "Tomorrow, 9 AM"],
+            ["week", "In a week, 9 AM"],
+          ].map(([id, label]) => (
+            <button key={id} type="button" className={preset === id ? "selected" : ""} aria-pressed={preset === id} data-reminder-initial={id === "minute" ? "true" : undefined} disabled={busy || retrying} onClick={() => choosePreset(id)}>
+              <span>{label}</span>{preset === id && <Check size={15} aria-hidden="true" />}
+            </button>
+          ))}
         </div>
-      )}
-      <p className="dialog-description reminder-help">
-        {desktop
-          ? remindersInTray
-            ? "Notes keeps running in the system tray when you close its window, so reminder popups can still appear. After you quit Notes, overdue reminders appear when you open it again."
-            : "Notes shows reminder popups while it is running. To receive them after closing the window, turn on background reminders in Settings. After you quit Notes, overdue reminders appear when you open it again."
-          : "Keep this tab open for in-app reminders. The installed Windows app also supports reminder popups."}
-      </p>
-      {error && (
-        <p id={errorId} className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-      {deliveryError && <p className="form-error" role="alert">{deliveryError}</p>}
-      {feedback && !deliveryError && <p className="helper" role="status">{feedback}</p>}
-      <div className="dialog-actions">
+        <div className="reminder-date-card">
+          <label className="field-label" htmlFor={inputId}><span><CalendarDays size={16} aria-hidden="true" />Date and time</span>
+            <input id={inputId} type="datetime-local" value={value} min={toReminderInput(Date.now())} max="2099-12-31T23:59" step="60" required disabled={busy || retrying} aria-invalid={Boolean(error)} aria-describedby={`${helpId}${error ? ` ${errorId}` : ""}`} onChange={(event) => { setValue(event.target.value); setPreset("custom"); setError(""); }} />
+          </label>
+          <div className="reminder-selection-preview"><Clock3 size={15} aria-hidden="true" /><span>{selectedTime ? formatReminder(selectedTime) : "Choose a date and time"}</span></div>
+          <p className="reminder-timezone" id={helpId}>Your local time{timezone ? ` · ${timezone.replaceAll("_", " ")}` : ""}.</p>
+        </div>
+        {reminder.reminderAt && (
+          <div className={`reminder-state-card ${delivered ? "delivered" : overdue ? "overdue" : "scheduled"}`}>
+            {delivered ? <Check size={18} aria-hidden="true" /> : <Bell size={18} aria-hidden="true" />}
+            <div><strong>{delivered ? "Reminder delivered" : overdue ? "Reminder overdue" : "Scheduled reminder"}</strong><p>{delivered ? `Last delivered ${formatReminder(reminder.reminderNotifiedAt)}.` : overdue ? "This reminder is overdue. Choose a new time or remove it." : `Currently set for ${formatReminder(reminder.reminderAt)}.`}</p></div>
+          </div>
+        )}
+        {desktop && onRetry && overdue && (
+          <div className="reminder-retry"><button type="button" className="button" onClick={retry} disabled={busy || retrying}><Bell size={16} />{retrying ? "Showing reminder…" : "Show reminder again"}</button><p className="helper">Use this if an earlier reminder was missed.</p></div>
+        )}
+        <p className="reminder-help"><Info size={16} aria-hidden="true" /><span>{desktop ? remindersInTray ? "Reminders stay active in the system tray. If you quit Notes, missed reminders appear next time you open it." : "Reminders appear while Notes is running. Turn on system tray reminders in Settings to keep them active after closing the window." : "Keep this tab open for in-app reminders. The installed Windows app also supports reminder popups."}</span></p>
+        {error && <p id={errorId} className="form-error" role="alert">{error}</p>}
+        {deliveryError && <p className="form-error" role="alert">{deliveryError}</p>}
+        {feedback && !deliveryError && <p className="reminder-feedback" role="status">{feedback}</p>}
+      </div>
+      <footer className="dialog-actions reminder-dialog-actions">
         {reminder.reminderAt && (
           <button
             type="button"
@@ -192,7 +153,7 @@ export default function ReminderDialog({
         <button type="submit" className="button primary" disabled={busy || retrying}>
           <Bell size={16} /> {busy ? "Saving…" : "Save reminder"}
         </button>
-      </div>
+      </footer>
     </form>
   );
 }

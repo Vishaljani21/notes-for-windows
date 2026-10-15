@@ -158,6 +158,7 @@ test("the desktop test alert waits for delivery and keeps failures visible", asy
   await useDesktopFixture(page);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const dialog = page.getByRole("dialog");
+  await dialog.getByRole("tab", { name: "Reminders", exact: true }).click();
   await dialog.getByRole("button", { name: "Test reminder alert", exact: true }).click();
   await expect(dialog.getByRole("button", { name: "Showing test alert…", exact: true })).toBeDisabled();
   await expect(dialog.getByRole("status")).toContainText("Waiting for the test alert");

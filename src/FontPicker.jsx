@@ -1,4 +1,5 @@
 import React, { useId, useState } from "react";
+import { Search } from "lucide-react";
 import { FONTS, FONT_GROUPS, getFontStack } from "./fonts.mjs";
 
 export default function FontPicker({
@@ -6,6 +7,7 @@ export default function FontPicker({
   value,
   onChange,
   allowInherit = false,
+  previewSize,
 }) {
   const [query, setQuery] = useState("");
   const controlId = useId();
@@ -15,18 +17,30 @@ export default function FontPicker({
       .includes(query.trim().toLowerCase()),
   );
   const selected = FONTS.find((font) => font.id === value);
+  const source =
+    value === "inherit"
+      ? "Follows interface"
+      : selected?.bundled
+        ? "Bundled · Offline"
+        : "Windows / system";
   return (
     <div className="font-picker">
-      <div className="field-label">
+      <div className="font-picker-heading">
         <label htmlFor={controlId}>{label}</label>
-        <input
-          className="font-search"
-          type="search"
-          aria-label={`Search ${label.toLowerCase()}s`}
-          placeholder={`Search ${FONTS.length} fonts…`}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        <span className="font-source">{source}</span>
+      </div>
+      <div className="font-controls">
+        <div className="font-search-wrap">
+          <Search size={16} aria-hidden="true" />
+          <input
+            className="font-search"
+            type="search"
+            aria-label={`Search ${label.toLowerCase()}s`}
+            placeholder={`Search ${FONTS.length} fonts…`}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
         <select
           id={controlId}
           aria-label={label}
@@ -67,6 +81,7 @@ export default function FontPicker({
         style={{
           fontFamily:
             value === "inherit" ? "var(--font-ui)" : getFontStack(value),
+          fontSize: previewSize,
         }}
         aria-label={`${label} preview`}
       >
