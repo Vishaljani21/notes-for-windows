@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+test-results/
+playwright-report/
+*.log
+.cache/
+public/ocr/
+.env
+.env.*
+!.env.example
+*.tmp

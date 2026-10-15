@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/jsdom/tr46",
+  "upstream_ref": "3a6f29721e7063b9ffd421e461a54beae6170001",
+  "retrieved_on": "2026-10-15",
+  "package": "tr46",
+  "version": "0.0.3",
+  "license": "MIT",
+  "package_git_head": "a8009f9ce80ff5dbe71dd71e203afe4e4c878d28",
+  "note": "The npm 0.0.3 package declares MIT but omitted a license file. This exact upstream license was added by original author Sebastian Mayr in commit 3a6f29721e7063b9ffd421e461a54beae6170001 (Add MIT license, Fixes #4), whose direct parent is the npm 0.0.3 gitHead a8009f9ce80ff5dbe71dd71e203afe4e4c878d28. The original 2016 copyright line is preserved unchanged.",
+  "history_url": "https://github.com/jsdom/tr46/commit/3a6f29721e7063b9ffd421e461a54beae6170001",
+  "files": [
+    {
+      "file": "LICENSE.md",
+      "url": "https://raw.githubusercontent.com/jsdom/tr46/3a6f29721e7063b9ffd421e461a54beae6170001/LICENSE.md",
+      "sha256": "eeed1ca176eebad5c73870e233cfff03981fecd319c969475dfa3633036c336b"
+    }
+  ]
+}

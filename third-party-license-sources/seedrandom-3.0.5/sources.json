@@ -1,0 +1,60 @@
+{
+  "repository": "https://github.com/davidbau/seedrandom",
+  "upstream_ref": "4460ad325a0a15273a211e509f03ae0beb99511a",
+  "retrieved_on": "2026-10-15",
+  "package": "seedrandom",
+  "version": "3.0.5",
+  "license": "MIT",
+  "note": "npm registry 3.0.5 gitHead identifies this immutable upstream commit. Every downloaded source file was compared byte-for-byte as UTF-8 text to the installed package before extraction. The main and Alea comments include complete permission terms; all alternate-generator author comments are retained too.",
+  "files": [
+    {
+      "file": "seedrandom.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/seedrandom.js",
+      "sha256": "996de33875f125fec5c623274b6d69c6afd1f1c198cb5b47cc8d9add258c846f",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "df5431fa9ba4b311f182a046e60cdd36ae37a1a80f515d6e9b1f568528735047"
+    },
+    {
+      "file": "lib-alea.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/lib/alea.js",
+      "sha256": "6bf4124c1f80279edbaf30d38d0fb365a699af01c45a61860aa1be3cd6cb3324",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "9f821c9ede583e1c1f1d3263d6d016d13d562768de6c477d8262f7e8028a09cb"
+    },
+    {
+      "file": "lib-tychei.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/lib/tychei.js",
+      "sha256": "87329ffb9e1252c72bbedb163e7a42f7d5bc773cde6a305bab48d64deae56c24",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "ad1d532fc0a55bdb9ed391e3ff79094cfb209a267a9268047b6bd019836e4112"
+    },
+    {
+      "file": "lib-xor128.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/lib/xor128.js",
+      "sha256": "b66fccc814ae1ea0dbb4fa37bf7acb9f443fe2318d6231e867da8d50b7615d0d",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "3d3981ee149b3e519220a78289b51f5fda4542500a19827a5b1bd12bb73fba80"
+    },
+    {
+      "file": "lib-xorwow.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/lib/xorwow.js",
+      "sha256": "4377fe2f8c5ef0df444b4bae0121dcc29e238cc37cd30b52767b1c7c3bf2776c",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "5b12799f336ea73d0d07e522c1edb9eadf05ae03d46c0694a6f71d005a7ebfaf"
+    },
+    {
+      "file": "lib-xor4096.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/lib/xor4096.js",
+      "sha256": "beecc961cb3ebdbb0ef96bf82e74e112ab9d5471a149bb9104c8dbb218676e6f",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "8da990a46fbf491bdb3d4775e1e92e75f6d9ae93f3ff22265995d370c90b30d0"
+    },
+    {
+      "file": "lib-xorshift7.js.license-header.txt",
+      "url": "https://raw.githubusercontent.com/davidbau/seedrandom/4460ad325a0a15273a211e509f03ae0beb99511a/lib/xorshift7.js",
+      "sha256": "9cd35117c003c1a1633e9bdc6e4b25eb55e5ce2474c100d7906130a5627d3135",
+      "extraction": "Exact unchanged leading source comment, including whitespace, before the implementation.",
+      "source_sha256": "66070d09f1dee370f337c5dd6889591fb00598a07d8ba4b2e4ddcd15c5ed8b4b"
+    }
+  ]
+}

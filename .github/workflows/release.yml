@@ -1,0 +1,68 @@
+name: Windows release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      CI: true
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Verify tag matches package version
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'The release tag must match the package.json version.'
+          }
+      - run: npm ci
+      - run: npx --no-install install-electron
+      - run: npx playwright install chromium
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:ui
+      - run: node scripts/desktop-smoke.cjs
+      - run: node scripts/release-safety-smoke.cjs
+      - name: Build unsigned Windows installer
+        run: npm run dist -- --publish never
+      - name: Compute installer checksum
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -LiteralPath release -Filter 'Notes-for-Windows-Setup-*.exe' -File
+          if ($installer.Count -ne 1) { throw 'Expected exactly one installer.' }
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content -LiteralPath release/SHA256SUMS.txt -Encoding utf8NoBOM
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseAssets = @((Get-ChildItem -LiteralPath release -Filter 'Notes-for-Windows-Setup-*.exe' -File).FullName)
+          $releaseAssets += (Resolve-Path -LiteralPath release/SHA256SUMS.txt).Path
+          gh release view $env:GITHUB_REF_NAME --json tagName 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME @releaseAssets --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME @releaseAssets --verify-tag --title "Notes for Windows $env:GITHUB_REF_NAME" --notes-file CHANGELOG.md
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release creation failed.' }

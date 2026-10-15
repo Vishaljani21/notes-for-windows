@@ -1,0 +1,30 @@
+{
+  "repository": "https://github.com/snico-dev/guid-typescript",
+  "upstream_ref": "1870de806c3db7ba46c5b8a1387c60fc9dda9284",
+  "retrieved_on": "2026-10-15",
+  "package": "guid-typescript",
+  "version": "1.0.9",
+  "license": "ISC",
+  "registry_metadata_url": "https://registry.npmjs.org/guid-typescript/1.0.9",
+  "npm_tarball_integrity": "sha512-Y8T4vYhEfwJOTbouREvG+3XDsjr8E3kIr7uf+JZ0BYloFsttiHU0WfvANVsR7TxNUJa/WpCnw/Ino/p+DeBhBQ==",
+  "note": "The exact npm package declares ISC and author nicolas but supplies no standalone copyright or license file. Current upstream source tree likewise has no standalone license or source license header; the npm gitHead is recorded but is not retrievable in the current upstream repository. Package metadata is retained unchanged. Standard ISC permission and disclaimer terms are included as a separately labeled reference excerpt based on the declared SPDX identifier; no package copyright holder or year was invented.",
+  "files": [
+    {
+      "file": "package.json",
+      "url": "https://registry.npmjs.org/guid-typescript/-/guid-typescript-1.0.9.tgz",
+      "sha256": "ed86856ee95fe87eadd8552b6803a85b7fb4f6cce08603bf9c8385972b5badb6",
+      "archive_path": "package/package.json",
+      "extraction": "Unchanged file from the exact version npm tarball; archive integrity verified against official registry metadata.",
+      "archive_integrity": "sha512-Y8T4vYhEfwJOTbouREvG+3XDsjr8E3kIr7uf+JZ0BYloFsttiHU0WfvANVsR7TxNUJa/WpCnw/Ino/p+DeBhBQ=="
+    },
+    {
+      "file": "ISC-standard-terms.txt",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/v3.27.0/text/ISC.txt",
+      "sha256": "c14e698e9a333183fcd725338bb7f2cd221b29632a4fdba8b7f89e45ca040be7",
+      "extraction": "Exact permission and disclaimer excerpt beginning at Permission. The reference copyright/template section is omitted because it is not an upstream copyright statement for this package.",
+      "source_sha256": "f2ec607f67bb0dd3053b49835b02110d5cd0f8eb6da3aac4dc0b142a6b299be9",
+      "reference_only": true,
+      "upstream_ref": "spdx/license-list-data v3.27.0"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# Changelog
+
+## 1.0.3 — 2026-10-15
+
+- Added separate interface and note fonts with live previews, search, and reset controls: 62 choices, including 48 bundled offline families, Windows fonts, and generic sans-serif, serif, and monospace options.
+- Kept both font preferences on the device alongside appearance and text-size preferences.
+- Improved library recovery and preserved unreadable data files when closing after a load error.
+- Reopening the app now restores and focuses its existing window.
+- Prepared the first public open-source release with an MIT source license, contributor documentation, and Windows CI/release workflows.
+
+## 1.0.2 — 2026-10-15
+
+- Improved readability with Segoe UI, larger sidebar labels, menus, tags, and note previews.
+- Added Comfortable, Large, and Extra large interface text settings, independent of editor text size.
+- Improved compact-window navigation and kept sidebar search and bottom controls accessible while scrolling.
+
+## 1.0.1 — 2026-10-15
+
+- Improved note-list selection, two-line previews, spacing, date visibility, and dark-mode contrast.
+- Refined gallery cards for narrow windows.
+
+## 1.0.0 — 2026-10-15
+
+- Initial Windows desktop app with local notes, rich text, folders, tags, Smart Folders, attachments, note links, password locks, backup/export, OCR, and local audio transcription.

@@ -1,0 +1,38 @@
+{
+  "repository": "https://github.com/Bill4Time/javascript-natural-sort",
+  "retrieved_on": "2026-10-15",
+  "package": "javascript-natural-sort",
+  "version": "0.7.1",
+  "license": "MIT",
+  "registry_metadata_url": "https://registry.npmjs.org/javascript-natural-sort/0.7.1",
+  "npm_tarball_integrity": "sha512-nO6jcEfZWQXDhOiBtG2KvKyEptz7RVbpGP4vTD2hLBdmNQSsCiicO2Ioinv6UI4y9ukqnBpy+XZ9H6uLNgJTlw==",
+  "note": "The exact npm package and source declare MIT, with original author Jim Palmer and credit to Dave Koelle in the source header, but supply no standalone complete license or copyright-year notice. Exact package metadata and source header are retained from the npm archive. Standard MIT permission and disclaimer terms are included as a separately labeled reference excerpt based on the declared SPDX identifier; no copyright holder or year was invented. No npm gitHead is supplied for 0.7.1, so the npm archive itself is the version-specific source.",
+  "files": [
+    {
+      "file": "package.json",
+      "url": "https://registry.npmjs.org/javascript-natural-sort/-/javascript-natural-sort-0.7.1.tgz",
+      "sha256": "5c841886167efd20e58b6356417fa6d481fe12a696c37225d91284681124aec9",
+      "archive_path": "package/package.json",
+      "extraction": "Unchanged file from exact npm version archive, whose registry integrity was verified.",
+      "archive_integrity": "sha512-nO6jcEfZWQXDhOiBtG2KvKyEptz7RVbpGP4vTD2hLBdmNQSsCiicO2Ioinv6UI4y9ukqnBpy+XZ9H6uLNgJTlw=="
+    },
+    {
+      "file": "naturalSort.js.license-header.txt",
+      "url": "https://registry.npmjs.org/javascript-natural-sort/-/javascript-natural-sort-0.7.1.tgz",
+      "sha256": "99e5d7cd089465cb3ce0f74e8fec045016fa9faa59ec42ce3ed71c6f69dbd960",
+      "archive_path": "package/naturalSort.js",
+      "extraction": "Exact unchanged first source comment from exact npm version; includes MIT declaration and author attribution.",
+      "source_sha256": "51dd07b518eb634af994706dd29954090b9781cd1d7784bb527283905336e0e0",
+      "archive_integrity": "sha512-nO6jcEfZWQXDhOiBtG2KvKyEptz7RVbpGP4vTD2hLBdmNQSsCiicO2Ioinv6UI4y9ukqnBpy+XZ9H6uLNgJTlw=="
+    },
+    {
+      "file": "MIT-standard-terms.txt",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/v3.27.0/text/MIT.txt",
+      "sha256": "83330a27667f812efa9c7cdaefd4c83f95b57a7454323a61ee29291312640468",
+      "extraction": "Exact permission and disclaimer excerpt beginning at Permission. The template copyright section is omitted because it is not an upstream copyright statement for this package.",
+      "source_sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+      "reference_only": true,
+      "upstream_ref": "spdx/license-list-data v3.27.0"
+    }
+  ]
+}
