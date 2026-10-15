@@ -33,6 +33,7 @@ import {
   Paperclip,
   ImagePlus,
   Mic,
+  Bell,
   ScanLine,
   Link2,
   Calculator,
@@ -74,7 +75,15 @@ import {
 import NoteEditor, { cleanHTML } from "./Editor.jsx";
 import FontPicker from "./FontPicker.jsx";
 import { getFontStack, FONTS } from "./fonts.mjs";
-import { AudioTool, ScanTool, fileDataURL } from "./MediaTools.jsx";
+import {
+  AudioTool,
+  AudioQuestions,
+  qaAnswersToNodes,
+  ScanTool,
+  fileDataURL,
+} from "./MediaTools.jsx";
+import ReminderDialog from "./ReminderDialog.jsx";
+import { formatReminder, isReminderTimestamp } from "./reminders.mjs";
 import {
   uid,
   escapeHTML,
@@ -109,6 +118,35 @@ const fullDate = (time) =>
   });
 const safeName = (name) =>
   (name || "Untitled").replace(/[<>:"/\\|?*\x00-\x1f]/g, "-").slice(0, 90);
+function audioContextFromNote(html = "") {
+  const document = new DOMParser().parseFromString(
+    cleanHTML(html),
+    "text/html",
+  );
+  const transcripts = [];
+  for (const heading of document.querySelectorAll("h1,h2,h3")) {
+    if (!/^(audio )?transcript$/i.test(heading.textContent.trim())) continue;
+    const parts = [];
+    for (
+      let element = heading.nextElementSibling;
+      element;
+      element = element.nextElementSibling
+    ) {
+      if (/^H[1-3]$/.test(element.tagName)) break;
+      if (element.textContent.trim()) parts.push(element.textContent.trim());
+    }
+    if (parts.length) transcripts.push(parts.join("\n\n"));
+  }
+  const audio = [...document.querySelectorAll("audio")].find((element) =>
+    /^data:(audio\/[^;,]+|application\/octet-stream)[;,]/i.test(
+      element.getAttribute("src") || "",
+    ),
+  );
+  return {
+    transcript: transcripts.join("\n\n"),
+    audioSrc: audio?.getAttribute("src") || "",
+  };
+}
 function IconButton({
   icon: Icon,
   label,
@@ -312,6 +350,88 @@ export default function App() {
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToastMessage(""), 4500);
   }, []);
+  const receiveReminder = useCallback(
+    ({ noteId, reminderAt, deliveredAt }) => {
+      const note = latest.current.library.notes.find(
+        (item) => item.id === noteId,
+      );
+      if (
+        !note ||
+        note.deletedAt ||
+        note.reminderAt !== reminderAt ||
+        note.reminderNotifiedAt >= reminderAt
+      )
+        return;
+      setLibrary((library) => ({
+        ...library,
+        notes: library.notes.map((item) =>
+          item.id === noteId && item.reminderAt === reminderAt
+            ? { ...item, reminderNotifiedAt: deliveredAt }
+            : item,
+        ),
+      }));
+      toast(
+        note.locked
+          ? "Reminder for a locked note"
+          : `Reminder: ${note.title || "New Note"}`,
+      );
+    },
+    [toast],
+  );
+  useEffect(() => {
+    const stopReminder = window.desktop?.onReminder?.(receiveReminder);
+    const stopOpen = window.desktop?.onOpenNote?.((noteId) => {
+      if (
+        !latest.current.library.notes.some(
+          (note) => note.id === noteId && !note.deletedAt,
+        )
+      )
+        return;
+      setScope("all");
+      setQuery("");
+      setTagFilter("");
+      setSelected(noteId);
+      setModal(null);
+    });
+    return () => {
+      stopReminder?.();
+      stopOpen?.();
+    };
+  }, [receiveReminder]);
+  useEffect(() => {
+    if (window.desktop || !loaded) return;
+    let timer;
+    const check = () => {
+      const now = Date.now();
+      const pending = latest.current.library.notes.filter(
+        (note) =>
+          !note.deletedAt &&
+          isReminderTimestamp(note.reminderAt) &&
+          !(note.reminderNotifiedAt >= note.reminderAt),
+      );
+      for (const note of pending.filter((item) => item.reminderAt <= now)) {
+        receiveReminder({
+          noteId: note.id,
+          reminderAt: note.reminderAt,
+          deliveredAt: now,
+        });
+      }
+      const future = pending.filter((note) => note.reminderAt > now);
+      if (future.length)
+        timer = setTimeout(
+          check,
+          Math.min(
+            60000,
+            Math.max(
+              1,
+              Math.min(...future.map((note) => note.reminderAt)) - now,
+            ),
+          ),
+        );
+    };
+    check();
+    return () => clearTimeout(timer);
+  }, [library.notes, loaded, receiveReminder]);
   useEffect(() => {
     let canceled = false;
     loadLibrary()
@@ -531,6 +651,8 @@ export default function App() {
           folderId: target,
           pinned: false,
           locked: false,
+          reminderAt: null,
+          reminderNotifiedAt: null,
           deletedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -568,6 +690,15 @@ export default function App() {
   function insert(content) {
     if (!editor || isLocked) return;
     editor.chain().focus().insertContent(content).run();
+    setMenu(null);
+  }
+  function appendToNote(content) {
+    if (!editor || isLocked) return;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt(editor.state.doc.content.size, content)
+      .run();
     setMenu(null);
   }
   async function exportBackup() {
@@ -1084,6 +1215,9 @@ export default function App() {
                   >
                     <div className="note-card-heading">
                       {n.locked && <LockKeyhole size={13} />}
+                      {!!n.reminderAt && (
+                        <Bell size={13} aria-label="Has reminder" />
+                      )}
                       <strong>{n.title || "New Note"}</strong>
                     </div>
                     <div className="note-card-preview">
@@ -1283,6 +1417,21 @@ export default function App() {
               active={editor?.isActive("taskList")}
               disabled={!current || isLocked || !!current.deletedAt}
             />
+            <IconButton
+              icon={Mic}
+              label="Record or import audio"
+              onClick={() =>
+                action(() => setModal({ type: "audio", noteId: current.id }))
+              }
+              disabled={!current || isLocked || !!current.deletedAt}
+            />
+            <IconButton
+              icon={Bell}
+              label="Set reminder"
+              active={!!current?.reminderAt}
+              onClick={() => action(() => setModal({ type: "reminder" }))}
+              disabled={!current || isLocked || !!current.deletedAt}
+            />
             <div className="menu-anchor">
               <IconButton
                 icon={Table2}
@@ -1348,6 +1497,25 @@ export default function App() {
                     }
                   >
                     Record or transcribe audio
+                  </MenuItem>
+                  <MenuItem
+                    icon={CircleHelp}
+                    disabled={!current.content.includes("<audio")}
+                    onClick={() =>
+                      action(() => {
+                        const context = audioContextFromNote(current.content);
+                        setModal(
+                          context.transcript || !context.audioSrc
+                            ? { type: "audioQuestions", ...context }
+                            : {
+                                type: "audio",
+                                initialAudioSrc: context.audioSrc,
+                              },
+                        );
+                      })
+                    }
+                  >
+                    Ask about audio
                   </MenuItem>
                   <MenuItem
                     icon={ScanLine}
@@ -1546,6 +1714,8 @@ export default function App() {
                               title: current.title + " — Copy",
                               locked: false,
                               encrypted: null,
+                              reminderAt: null,
+                              reminderNotifiedAt: null,
                               createdAt: now,
                               updatedAt: now,
                             },
@@ -1617,48 +1787,76 @@ export default function App() {
                 <small>Its content is encrypted on this device.</small>
               </div>
             ) : (
-              <div className="editor-scroll">
-                <article
-                  className={`note-document ${current.deletedAt ? "read-only" : ""}`}
-                >
-                  <div className="note-date">
-                    {fullDate(current.updatedAt)}
-                    {current.pinned && (
-                      <>
-                        <span className="date-dot">·</span>
-                        <Pin size={11} />
-                        <span>Pinned</span>
-                      </>
+              <>
+                <div className="editor-scroll">
+                  <article
+                    className={`note-document ${current.deletedAt ? "read-only" : ""}`}
+                  >
+                    <div className="note-date">
+                      {fullDate(current.updatedAt)}
+                      {current.pinned && (
+                        <>
+                          <span className="date-dot">·</span>
+                          <Pin size={11} />
+                          <span>Pinned</span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      className="note-title"
+                      value={current.title}
+                      onChange={(e) =>
+                        updateNote(current.id, { title: e.target.value })
+                      }
+                      placeholder="New Note"
+                      aria-label="Note title"
+                      readOnly={!!current.deletedAt}
+                    />
+                    {!!current.reminderAt && !current.deletedAt && (
+                      <button
+                        className="reminder-banner"
+                        aria-label="Edit reminder"
+                        onClick={() => setModal({ type: "reminder" })}
+                      >
+                        <Bell size={15} />
+                        <span>
+                          {current.reminderNotifiedAt ? "Reminded" : "Reminder"}{" "}
+                          · {formatReminder(current.reminderAt)}
+                        </span>
+                      </button>
                     )}
-                  </div>
-                  <input
-                    className="note-title"
-                    value={current.title}
-                    onChange={(e) =>
-                      updateNote(current.id, { title: e.target.value })
-                    }
-                    placeholder="New Note"
-                    aria-label="Note title"
-                    readOnly={!!current.deletedAt}
-                  />
-                  <NoteEditor
-                    key={current.id + (isLocked ? "-locked" : "")}
-                    note={current}
-                    onChange={(content) => updateNote(current.id, { content })}
-                    onReady={setEditor}
-                    onNoteLink={openNote}
-                    onLinkRequest={() => setModal({ type: "link" })}
-                    fontSize={settings.fontSize}
-                  />
-                  <div className="note-tags">
+                    <NoteEditor
+                      key={current.id + (isLocked ? "-locked" : "")}
+                      note={current}
+                      onChange={(content) =>
+                        updateNote(current.id, { content })
+                      }
+                      onReady={setEditor}
+                      onNoteLink={openNote}
+                      onLinkRequest={() => setModal({ type: "link" })}
+                      fontSize={settings.fontSize}
+                    />
+                  </article>
+                </div>
+                <div className="note-tags-bar">
+                  <div
+                    className="note-tags"
+                    role="group"
+                    aria-label="Note tags"
+                  >
                     {current.tags.map((tag) => (
-                      <button key={tag} onClick={() => navigate("all", tag)}>
+                      <button
+                        key={tag}
+                        disabled={!!current.deletedAt}
+                        onClick={() => navigate("all", tag)}
+                      >
                         # {tag}
                       </button>
                     ))}
                     {!current.deletedAt && (
                       <button
                         className="add-tag"
+                        aria-label="Edit note tags"
                         onClick={() => setModal({ type: "tags" })}
                       >
                         <Plus size={12} />
@@ -1666,8 +1864,8 @@ export default function App() {
                       </button>
                     )}
                   </div>
-                </article>
-              </div>
+                </div>
+              </>
             )}
             <footer className="editor-footer">
               <span className={"save-state " + saveStatus}>
@@ -1757,7 +1955,7 @@ export default function App() {
       {modal && (
         <Modal
           close={() => setModal(null)}
-          wide={["audio", "scan"].includes(modal.type)}
+          wide={["audio", "audioQuestions", "scan"].includes(modal.type)}
         >
           <DialogContent
             modal={modal}
@@ -1774,6 +1972,7 @@ export default function App() {
             setScope={setScope}
             toast={toast}
             insert={insert}
+            appendToNote={appendToNote}
             exportBackup={exportBackup}
             backupInput={backupInput}
             openNote={openNote}
@@ -1799,6 +1998,7 @@ function DialogContent({
   setScope,
   toast,
   insert,
+  appendToNote,
   exportBackup,
   backupInput,
   openNote,
@@ -1817,10 +2017,78 @@ function DialogContent({
     [parent, setParent] = useState(modal.folder?.parentId || ""),
     [smart, setSmart] = useState(!!modal.folder?.smartTag),
     [smartTag, setSmartTag] = useState(modal.folder?.smartTag || ""),
-    [result, setResult] = useState("");
+    [result, setResult] = useState(""),
+    [audioAnswers, setAudioAnswers] = useState([]);
   const settings = library.settings;
   if (modal.type === "audio")
-    return <AudioTool insert={insert} close={close} toast={toast} />;
+    return (
+      <AudioTool
+        insert={appendToNote}
+        close={close}
+        toast={toast}
+        initialAudioSrc={modal.initialAudioSrc}
+        initialTranscript={modal.initialTranscript}
+      />
+    );
+  if (modal.type === "reminder")
+    return (
+      <ReminderDialog
+        note={current}
+        remindersInTray={settings.remindersInTray}
+        close={close}
+        onSave={(patch) => {
+          updateNote(current.id, patch);
+          toast("Reminder saved.");
+        }}
+        onClear={() => {
+          updateNote(current.id, {
+            reminderAt: null,
+            reminderNotifiedAt: null,
+          });
+          toast("Reminder removed.");
+        }}
+      />
+    );
+  if (modal.type === "audioQuestions")
+    return (
+      <div className="tool-dialog">
+        <div className="dialog-icon">
+          <CircleHelp size={26} />
+        </div>
+        <h2>Questions about your recording</h2>
+        {modal.transcript ? (
+          <details className="transcript-reference">
+            <summary>View saved transcript</summary>
+            <p>{modal.transcript}</p>
+          </details>
+        ) : (
+          <p className="dialog-description">
+            Transcribe or import an audio recording first to ask questions about
+            it.
+          </p>
+        )}
+        <AudioQuestions
+          transcript={modal.transcript}
+          onAnswersChange={setAudioAnswers}
+          onBusyChange={setBusy}
+        />
+        <div className="dialog-actions">
+          <button className="button" onClick={close}>
+            Done
+          </button>
+          <button
+            className="button primary"
+            disabled={busy || !audioAnswers.some((answer) => answer.answer)}
+            onClick={() => {
+              appendToNote(qaAnswersToNodes(audioAnswers));
+              close();
+            }}
+          >
+            Add answers to note
+          </button>
+        </div>
+      </div>
+    );
   if (modal.type === "scan")
     return <ScanTool insert={insert} close={close} toast={toast} />;
   const submit = (e) => {
@@ -2474,7 +2742,7 @@ function DialogContent({
         {heading(
           Settings,
           "Make a little space your own",
-          "Notes for Windows · Version 1.0.3",
+          "Notes for Windows · Version 1.1.0",
         )}
         <div className="settings-section">
           <h3>Appearance</h3>
@@ -2557,6 +2825,32 @@ function DialogContent({
               }
             />
           </label>
+        </div>
+        <div className="settings-section">
+          <h3>Reminders</h3>
+          <label className="toggle-row">
+            <span>
+              <strong>Keep reminders active in the system tray</strong>
+              <small>
+                Closing the window keeps Notes running. Choose Quit from its
+                tray icon to exit.
+              </small>
+            </span>
+            <input
+              type="checkbox"
+              aria-label="Keep reminders active in the system tray"
+              checked={settings.remindersInTray !== false}
+              disabled={!window.desktop}
+              onChange={(event) =>
+                setSettings({ remindersInTray: event.target.checked })
+              }
+            />
+          </label>
+          <p className="helper">
+            {window.desktop
+              ? "Notes must be running for Windows notifications. Open it after starting Windows; reminders missed while it was closed appear when it opens again."
+              : "In-app reminders work while this tab stays open. Install the Windows app for notifications and system tray support."}
+          </p>
         </div>
         <div className="settings-section">
           <h3>Your notes, your device</h3>

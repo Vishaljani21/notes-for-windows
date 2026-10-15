@@ -8,6 +8,16 @@ contextBridge.exposeInMainWorld("desktop", {
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
   finishClose: () => ipcRenderer.send("window:finish-close"),
+  onReminder: (callback) => {
+    const listener = (_, reminder) => callback(reminder);
+    ipcRenderer.on("notes:reminder", listener);
+    return () => ipcRenderer.removeListener("notes:reminder", listener);
+  },
+  onOpenNote: (callback) => {
+    const listener = (_, noteId) => callback(noteId);
+    ipcRenderer.on("notes:open-note", listener);
+    return () => ipcRenderer.removeListener("notes:open-note", listener);
+  },
   onBeforeClose: (callback) => {
     const listener = () => callback();
     ipcRenderer.on("window:before-close", listener);

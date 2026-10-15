@@ -16,7 +16,7 @@ This independent open-source application is inspired by Apple Notes. It is not a
 
 Releases target **64-bit Windows**. You do not need Node.js to use the installed app. The installer is currently **unsigned**, so Windows may display an unknown-publisher or SmartScreen warning. Only download releases from this repository. Release assets include `SHA256SUMS.txt` for checking downloaded files with `Get-FileHash`.
 
-Updates are installed manually from Releases. Back up your notebook from Settings before upgrading.
+Updates are installed manually from Releases. Back up your notebook from Settings and choose **Quit Notes** from the system tray before upgrading.
 
 ## Features
 
@@ -24,6 +24,8 @@ Updates are installed manually from Releases. Back up your notebook from Setting
 - **Write and format:** rich text, headings, emphasis, highlights, quotes, code blocks, checklists, lists, tables, collapsible sections, undo/redo, and spell checking.
 - **Keep things organized:** folders and subfolders, drag notes into folders, pins, tags, tag-based Smart Folders, search, and links between notes by typing `>>`.
 - **Capture more:** images, file attachments, microphone recordings, audio import, English speech transcription, and English text recognition from imported images or camera photos.
+- **Ask about recordings:** on-device English transcript questions with quoted evidence, no-answer handling, and answers you can save in the note.
+- **Remember what matters:** note reminders, date/time presets, Windows notifications, click-to-open, overdue delivery on reopening, and system tray support.
 - **Work with your words:** a calculation dialog and a local extractive summary that selects sentences from the note.
 - **Keep control of your data:** automatic local saving, Recently Deleted with restore, JSON notebook backups and restores, plain text/HTML note export, and print-to-PDF through Windows.
 - **Lock private content:** password-encrypted note content, tags, and attachments. Titles, folder membership, and timestamps remain visible.
@@ -36,13 +38,25 @@ Choose **Settings → Fonts & writing** to preview and apply any of **62 font ch
 
 Screenshots show the app's included fictional sample notes.
 
+## Audio questions and reminders
+
+Use the microphone button to **Record audio** or **Import audio**, then **Transcribe audio**. Type a question under **Ask about this audio** and choose **Ask audio**. You can save the transcript and answered questions in the note. For an existing audio note, use **Add to note → Ask about audio**; recordings without a saved transcript can be transcribed there first.
+
+Answers are excerpts from the English transcript, with supporting quotes. The app reports when it cannot find a confident answer. Check the quotes and speech-recognition text; this is a factual question tool rather than a general conversational assistant. Transcripts are limited to 120,000 characters per question.
+
+Choose the bell button to set a note reminder, then select a date/time or a preset. Click its reminder badge to change or remove it. Windows notifications open the note when clicked. Deleted notes do not deliver reminders; restored notes keep their reminder settings. Duplicate notes start without a reminder.
+
+**Settings → Reminders → Keep reminders active in the system tray** is enabled by default. Closing the window saves and hides it; use **Quit Notes** from the tray to exit. Notes does not start automatically with Windows. Open it after signing in; reminders missed while it was closed appear when it opens again. Windows notification settings and Do Not Disturb can affect whether a notification is shown. The browser preview provides in-app reminders only while its tab is open.
+
 ## Data and privacy
 
 Your notebook stays on your device unless you export it. The desktop app saves `notes-data.json` and a recovery copy, `notes-data.json.bak`, in Electron's user data directory, normally `%APPDATA%\notes-for-windows\`. Saving writes a temporary file before replacing the main library. Browser development preview data is stored separately in IndexedDB.
 
 Speech transcription downloads the [Whisper Tiny English model](https://huggingface.co/onnx-community/whisper-tiny.en) on first use. OCR downloads English language data on first use. Downloads contact the relevant model hosts/CDNs; audio and document images are processed locally. A firewall or unavailable model host can prevent these features from starting. Original media can still be kept in a note.
 
-Locked content uses AES-256-GCM with a PBKDF2-derived key. Passwords are held in memory while notes are unlocked. Quit the app or choose **Close this locked note** to close a lock. There is no password recovery. Locking a note does not securely erase older disk blocks or previously exported backups. Keep regular backups in another location.
+Audio questions download the separate [tinyroberta SQuAD2 ONNX model](https://huggingface.co/onnx-community/tinyroberta-squad2-ONNX) by deepset / ONNX Community (CC BY 4.0), approximately 86 MB including tokenizer data. It is cached for offline use. Audio, transcripts, and questions stay on the device; model downloads do not include them. Reminder delivery receipts are stored separately as `reminder-deliveries.json`, containing note identifiers and dates.
+
+Locked content uses AES-256-GCM with a PBKDF2-derived key. Titles, folder membership, timestamps, and reminder schedules remain visible. Passwords are held in memory while notes are unlocked. Quit the app or choose **Close this locked note** to close a lock. There is no password recovery. Locking a note does not securely erase older disk blocks or previously exported backups. Keep regular backups in another location.
 
 ## Current limitations
 
@@ -80,6 +94,13 @@ node scripts/desktop-smoke.cjs
 
 # Isolated recovery, corrupt-library preservation, and single-instance checks
 node scripts/release-safety-smoke.cjs
+
+# Native reminder, tray close, notification routing, and safe quit checks
+node scripts/reminder-smoke.cjs
+
+# Optional actual audio Q&A model download, inference, and offline-cache checks
+node scripts/audio-qa-smoke.cjs
+node scripts/desktop-audio-qa-smoke.cjs
 
 # Optional media smoke test; downloads models and uses test fixtures
 node scripts/desktop-smoke.cjs --media

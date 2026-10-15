@@ -1,4 +1,5 @@
 import { isFontId } from "./fonts.mjs";
+import { normalizeReminder } from "./reminders.mjs";
 export const uid = () => crypto.randomUUID();
 export const escapeHTML = (value = "") =>
   String(value).replace(
@@ -90,7 +91,7 @@ export function validateLibrary(data) {
   }
   return {
     version: 1,
-    notes: data.notes,
+    notes: data.notes.map((note) => ({ ...note, ...normalizeReminder(note) })),
     folders: data.folders,
     settings: {
       theme: "light",
@@ -99,6 +100,10 @@ export function validateLibrary(data) {
       fontSize: 18,
       uiScale: 1,
       ...data.settings,
+      remindersInTray:
+        typeof data.settings?.remindersInTray === "boolean"
+          ? data.settings.remindersInTray
+          : true,
       fontFamily: isFontId(data.settings?.fontFamily)
         ? data.settings.fontFamily
         : "system",
@@ -229,6 +234,7 @@ export function seedLibrary() {
       view: "list",
       fontSize: 18,
       uiScale: 1,
+      remindersInTray: true,
     },
     folders: [
       { id: "notes", name: "Notes", parentId: null },

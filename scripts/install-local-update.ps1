@@ -6,6 +6,17 @@ $notesInstallDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData
 $notesInstalledExe = Join-Path $notesInstallDir 'Notes for Windows.exe'
 $notesWorkspaceExe = Join-Path $notesProject 'release\win-unpacked\Notes for Windows.exe'
 if (-not (Test-Path -LiteralPath $notesSetup)) { throw 'The requested installer is missing.' }
+$notesInstalledProcesses = @(Get-Process 'Notes for Windows' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $notesInstalledExe })
+if ($notesInstalledProcesses.Count -gt 0 -and (Test-Path -LiteralPath $notesInstalledExe)) {
+  $notesExistingVersion = [version]((Get-Item -LiteralPath $notesInstalledExe).VersionInfo.ProductVersion.Split('+')[0])
+  if ($notesExistingVersion -ge [version]'1.1.0') {
+    $notesQuitRequest = Start-Process -FilePath $notesInstalledExe -ArgumentList '--quit' -WindowStyle Hidden -PassThru
+    if (-not $notesQuitRequest.WaitForExit(10000)) { throw 'Notes did not accept the quit request. The update has not started.' }
+    foreach ($notesExistingProcess in $notesInstalledProcesses) {
+      if (-not $notesExistingProcess.WaitForExit(20000)) { throw 'Notes is still saving or waiting to quit. The update has not started.' }
+    }
+  }
+}
 $notesWindows = Get-Process 'Notes for Windows' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.Path -eq $notesInstalledExe -or $_.Path -eq $notesWorkspaceExe) }
 foreach ($notesWindow in $notesWindows) {
   if (-not $notesWindow.CloseMainWindow()) { throw 'Notes could not close gracefully. The update has not started.' }

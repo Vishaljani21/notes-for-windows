@@ -885,6 +885,7 @@ button:active:not(:disabled) {
   }
 }
 .editor-panel {
+  --note-inline-padding: 67px;
   grid-column: 3;
   grid-row: 2;
   display: flex;
@@ -926,13 +927,14 @@ button:active:not(:disabled) {
 .editor-scroll {
   overflow: auto;
   flex: 1;
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
   scroll-behavior: smooth;
 }
 .note-document {
   max-width: 850px;
-  padding: 26px 67px 70px;
+  padding: 26px var(--note-inline-padding) 40px;
   margin: 0 auto;
   min-height: 100%;
 }
@@ -966,6 +968,23 @@ button:active:not(:disabled) {
 }
 .note-title::placeholder {
   color: var(--subtle);
+}
+.reminder-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  margin: -5px 0 22px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: calc(13px * var(--ui-scale));
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.reminder-banner:hover {
+  background: var(--selected);
 }
 .note-prose {
   outline: none;
@@ -1256,15 +1275,25 @@ button:active:not(:disabled) {
 .note-prose div[data-type="detailsContent"] {
   margin-top: 10px;
 }
-.note-tags {
+.note-tags-bar {
   border-top: 1px solid var(--border);
-  padding-top: 18px;
-  margin-top: 33px;
+  background: var(--paper);
+  flex-shrink: 0;
+  max-height: min(25dvh, 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.note-tags {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 12px var(--note-inline-padding);
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
 }
 .note-tags button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-size: calc(12px * var(--ui-scale));
   color: #a38c4f;
   background: #f6f1e5;
@@ -1909,6 +1938,111 @@ textarea:focus {
   height: 40px;
   margin-top: 15px;
 }
+.audio-questions {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.audio-questions-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+.audio-questions-heading h3 {
+  margin: 0;
+  font-size: calc(17px * var(--ui-scale));
+  color: var(--text);
+}
+.audio-question-form {
+  display: grid;
+  gap: 10px;
+  font-size: calc(14px * var(--ui-scale));
+}
+.audio-question-form input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--panel);
+  color: var(--text);
+}
+.audio-question-form input:focus {
+  border-color: var(--gold);
+}
+.audio-answer-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.audio-answer {
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--ui-scale));
+  line-height: 1.7;
+}
+.audio-answer h4 {
+  margin: 0 0 12px;
+  font-size: inherit;
+}
+.audio-answer p {
+  margin: 5px 0 12px;
+}
+.audio-answer blockquote {
+  margin: 0;
+  border-left: 3px solid var(--gold);
+  padding-left: 12px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.audio-answer-label {
+  color: var(--accent);
+  font-size: calc(12px * var(--ui-scale));
+}
+.audio-questions a {
+  color: var(--accent);
+}
+.transcript-reference {
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: calc(14px * var(--ui-scale));
+}
+.transcript-reference summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.transcript-reference p {
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  margin: 12px 0 0;
+  line-height: 1.7;
+}
+.reminder-presets {
+  margin-bottom: 22px;
+}
+.reminder-timezone {
+  color: var(--muted);
+  font-size: calc(12px * var(--ui-scale));
+  line-height: 1.6;
+}
+.reminder-note-name {
+  overflow-wrap: anywhere;
+}
+.reminder-status {
+  padding: 12px;
+  background: var(--soft);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: calc(13px * var(--ui-scale));
+  line-height: 1.6;
+}
 .transcript-area {
   margin-top: 25px;
 }
@@ -2103,11 +2237,14 @@ textarea:focus {
   }
 }
 @media (max-width: 1150px) {
+  .editor-panel {
+    --note-inline-padding: 37px;
+  }
   .app {
     grid-template-columns: 236px 280px minmax(0, 1fr);
   }
   .note-document {
-    padding: 26px 37px 55px;
+    padding: 26px var(--note-inline-padding) 40px;
   }
   .note-title {
     font-size: calc(32px * var(--ui-scale));
@@ -2139,6 +2276,9 @@ textarea:focus {
   }
 }
 @media (max-width: 820px) {
+  .editor-panel {
+    --note-inline-padding: 25px;
+  }
   .app {
     grid-template-columns: 0 245px minmax(0, 1fr);
   }
@@ -2185,7 +2325,7 @@ textarea:focus {
     grid-template-columns: 0 245px minmax(0, 1fr);
   }
   .note-document {
-    padding: 22px 25px 45px;
+    padding: 22px var(--note-inline-padding) 35px;
   }
   .editor-toolbar {
     padding: 0 10px;
@@ -2222,6 +2362,9 @@ textarea:focus {
   }
 }
 @media (max-width: 600px) {
+  .editor-panel {
+    --note-inline-padding: 17px;
+  }
   .app,
   .app.sidebar-hidden,
   .app.gallery-view {
@@ -2256,7 +2399,7 @@ textarea:focus {
     display: none;
   }
   .note-document {
-    padding: 20px 17px 40px;
+    padding: 20px var(--note-inline-padding) 30px;
   }
   .note-title {
     font-size: calc(32px * var(--ui-scale));
@@ -2345,6 +2488,7 @@ textarea:focus {
   .notes-panel,
   .editor-toolbar,
   .editor-footer,
+  .note-tags-bar,
   .note-tags,
   .modal-backdrop,
   .menu-scrim,

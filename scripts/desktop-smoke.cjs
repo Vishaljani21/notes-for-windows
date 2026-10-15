@@ -5,6 +5,9 @@ const assert = require("node:assert/strict");
 async function main() {
   const dir = path.resolve("test-results/desktop-" + Date.now());
   await fs.mkdir(dir, { recursive: true });
+  const fixture = (await import("../src/lib.mjs")).seedLibrary();
+  fixture.settings.remindersInTray = false;
+  await fs.writeFile(path.join(dir, "notes-data.json"), JSON.stringify(fixture));
   const app = await electron.launch({
     args: [path.resolve(".")],
     env: {

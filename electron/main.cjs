@@ -8,10 +8,13 @@ const {
   protocol,
   net,
   shell,
+  Notification,
+  Tray,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { createReminderScheduler } = require("./reminders.cjs");
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "notes",
@@ -32,27 +35,63 @@ if (
   app.setPath("userData", process.env.NOTES_TEST_USER_DATA);
 let mainWindow;
 let closingAllowed = false;
+let quitting = false;
+let tray;
+let reminderScheduler;
+const activeNotifications = new Set();
 let pendingWrite = Promise.resolve();
+const quitRequested = process.argv.includes("--quit");
 const ownsInstance = app.requestSingleInstanceLock();
-if (!ownsInstance) app.quit();
+if (!ownsInstance || quitRequested) app.quit();
 else
-  app.on("second-instance", () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
+  app.on("second-instance", (_, argv) => {
+    if (argv.includes("--quit")) app.quit();
+    else showWindow();
   });
+function showWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+function updateTray(settings) {
+  if (settings?.remindersInTray !== true) {
+    tray?.destroy();
+    tray = undefined;
+    return;
+  }
+  if (tray) return;
+  try {
+    tray = new Tray(path.join(__dirname, "../dist/icon.png"));
+    tray.setToolTip("Notes for Windows — reminders are running");
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: "Open Notes", click: showWindow },
+        { label: "Reminders are running", enabled: false },
+        { type: "separator" },
+        { label: "Quit Notes", click: () => app.quit() },
+      ]),
+    );
+    tray.on("double-click", showWindow);
+    tray.on("click", showWindow);
+  } catch (error) {
+    console.error("Could not create the Notes tray icon:", error);
+    tray?.destroy();
+    tray = undefined;
+  }
+}
 const dataPath = () => path.join(app.getPath("userData"), "notes-data.json");
 const trusted = (event) =>
   event.sender === mainWindow?.webContents &&
   event.senderFrame === mainWindow?.webContents.mainFrame;
 ipcMain.handle("notes:load", async (event) => {
   if (!trusted(event)) throw new Error("Untrusted source");
+  let library;
   try {
-    return JSON.parse(await fs.readFile(dataPath(), "utf8"));
+    library = JSON.parse(await fs.readFile(dataPath(), "utf8"));
   } catch (error) {
     try {
-      return {
+      library = {
         ...JSON.parse(await fs.readFile(dataPath() + ".bak", "utf8")),
         recovered: true,
       };
@@ -64,6 +103,11 @@ ipcMain.handle("notes:load", async (event) => {
       );
     }
   }
+  if (library?.version === 1 && Array.isArray(library.notes)) {
+    updateTray(library.settings);
+    return reminderScheduler.replaceLibrary(library);
+  }
+  return library;
 });
 ipcMain.handle("notes:save", (event, data) => {
   if (
@@ -86,6 +130,10 @@ ipcMain.handle("notes:save", (event, data) => {
       await fs.writeFile(dataPath() + ".tmp", json, "utf8");
       await fs.copyFile(dataPath() + ".tmp", dataPath() + ".bak");
       await fs.rename(dataPath() + ".tmp", dataPath());
+      updateTray(data.settings);
+      // Native delivery receipts are independent from renderer saves. A
+      // receipt failure must never turn a successful note save into an error.
+      await reminderScheduler.replaceLibrary(data).catch(console.error);
     });
   return pendingWrite;
 });
@@ -130,7 +178,40 @@ for (const action of ["minimize", "maximize", "close"])
     else mainWindow[action]();
   });
 app.whenReady().then(() => {
-  if (!ownsInstance) return;
+  if (!ownsInstance || quitRequested) return;
+  app.setAppUserModelId("com.notesforwindows.desktop");
+  reminderScheduler = createReminderScheduler({
+    deliveryPath: path.join(app.getPath("userData"), "reminder-deliveries.json"),
+    notify: (note, receipt) => {
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send("notes:reminder", receipt);
+      if (!Notification.isSupported()) return;
+      const notification = new Notification({
+        title: note.locked
+          ? "Locked note reminder"
+          : (typeof note.title === "string" && note.title
+              ? note.title
+              : "Untitled note"
+            ).slice(0, 120),
+        body: "Your note reminder is due. Click to open it.",
+        icon: path.join(__dirname, "../dist/icon.png"),
+        timeoutType: "never",
+      });
+      activeNotifications.add(notification);
+      notification.on("click", () => {
+        showWindow();
+        if (mainWindow && !mainWindow.isDestroyed())
+          mainWindow.webContents.send("notes:open-note", note.id);
+        activeNotifications.delete(notification);
+      });
+      notification.on("close", () => activeNotifications.delete(notification));
+      notification.on("failed", (_, error) => {
+        activeNotifications.delete(notification);
+        console.error("Windows could not display a reminder:", error);
+      });
+      notification.show();
+    },
+  });
   const assets = path.resolve(__dirname, "../dist");
   protocol.handle("notes", (request) => {
     const url = new URL(request.url);
@@ -196,6 +277,10 @@ app.whenReady().then(() => {
     if (!closingAllowed) {
       event.preventDefault();
       mainWindow.webContents.send("window:before-close");
+    } else if (tray && !quitting) {
+      event.preventDefault();
+      closingAllowed = false;
+      mainWindow.hide();
     }
   });
   Menu.setApplicationMenu(
@@ -240,5 +325,12 @@ app.whenReady().then(() => {
       },
     ]),
   );
+});
+app.on("before-quit", () => {
+  quitting = true;
+});
+app.on("will-quit", () => {
+  reminderScheduler?.stop();
+  tray?.destroy();
 });
 app.on("window-all-closed", () => app.quit());

@@ -24,6 +24,8 @@ Electron and Chromium ship their own license materials, including `LICENSE` and 
 
 Transcription downloads [onnx-community/whisper-tiny.en](https://huggingface.co/onnx-community/whisper-tiny.en), and OCR downloads English trained data from the configured Tesseract language-data host. These are downloaded on demand rather than committed to this source repository. Their upstream licenses and model/data notices continue to apply. If a future release bundles models or training data, include the relevant notices with those files.
 
+Audio transcript questions download [onnx-community/tinyroberta-squad2-ONNX](https://huggingface.co/onnx-community/tinyroberta-squad2-ONNX), converted from [deepset/tinyroberta-squad2](https://huggingface.co/deepset/tinyroberta-squad2). These model repositories declare **CC BY 4.0**. Credit is displayed in the question interface with a link to the model repository. Model weights are downloaded unmodified on demand and cached locally; they are not included in the application's MIT license or committed installer assets. Preserve attribution and the model's license terms if changing model distribution.
+
 ## Maintainer release check
 
 For every dependency or font update:

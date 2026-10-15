@@ -47,9 +47,7 @@ function exited(child, timeout = 15000) {
 
 async function closeGracefully(instance) {
   const done = exited(instance.process());
-  await instance.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()[0].close(),
-  );
+  await instance.evaluate(({ app }) => app.quit());
   assert.equal(await done, 0);
 }
 

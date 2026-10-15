@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — 2026-10-15
+
+- Docked note tags above the save-status footer so they remain visible while reading or editing long notes.
+- Kept tag controls aligned with the note, with wrapping and scrolling for large tag collections.
+- Added a microphone button in the editor toolbar for direct access to recording, audio import, and transcription.
+- Added on-device English audio transcript questions with quoted evidence, no-answer handling, and saved answers. Existing audio notes can be transcribed and queried without duplicating the clip.
+- Added note reminders with date/time presets, Windows notifications, click-to-open, overdue recovery, and persistent duplicate-delivery protection.
+- Closing the window keeps Notes in the system tray by default; Settings can turn this off, and Quit from the tray exits safely.
+
 ## 1.0.3 — 2026-10-15
 
 - Added separate interface and note fonts with live previews, search, and reset controls: 62 choices, including 48 bundled offline families, Windows fonts, and generic sans-serif, serif, and monospace options.

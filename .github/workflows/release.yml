@@ -43,6 +43,7 @@ jobs:
       - run: npm run test:ui
       - run: node scripts/desktop-smoke.cjs
       - run: node scripts/release-safety-smoke.cjs
+      - run: node scripts/reminder-smoke.cjs
       - name: Build unsigned Windows installer
         run: npm run dist -- --publish never
       - name: Compute installer checksum
