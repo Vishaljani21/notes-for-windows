@@ -21,6 +21,7 @@ Updates are installed manually from Releases. Back up your notebook from Setting
 ## Features
 
 - **Make it comfortable:** light, dark, and system appearance; list and gallery views; adjustable interface and editor text sizes; font choices in Settings, including bundled fonts that work offline and Windows system fonts.
+- **Make it yours:** 18 normal and neon accent colors across selections, controls, and reminder popups. Choose **Settings → Appearance → Accent color**; the choice stays on your device.
 - **Write and format:** rich text, headings, emphasis, highlights, quotes, code blocks, checklists, lists, tables, collapsible sections, undo/redo, and spell checking.
 - **Keep things organized:** folders and subfolders, drag notes into folders, pins, tags, tag-based Smart Folders, search, and links between notes by typing `>>`.
 - **Work from a right-click:** note-card menus for pinning, moving, reminders, locking, duplication, and deletion; editor menus for paragraphs, headings, lists, formatting, tables, links, and clipboard actions. Keyboard users can press **Shift+F10**.
@@ -33,6 +34,8 @@ Updates are installed manually from Releases. Back up your notebook from Setting
 Choose **Settings → Fonts & writing** to preview and apply any of **62 font choices**, including **48 bundled open-source families**. Select an **Interface font** and a separate **Note font**, or let notes follow the interface. Search by name or category and use **Reset fonts** to return to Segoe UI. Generic sans-serif, serif, and monospace choices use your system's matching fonts. Windows-specific choices may fall back if not installed; bundled fonts work offline. The bundled Latin character sets use system fallbacks for scripts they do not contain. Both font preferences are saved on your device.
 
 Settings groups **Appearance**, **Fonts & writing**, **Reminders**, and **Data & backup** into separate sections. Changes save automatically, and the close and Done buttons stay visible while you scroll. Use the arrow keys to move between settings categories.
+
+Font and folder dropdowns match the app and support arrow keys, typeahead, Enter, and Escape. The reminder calendar supports month navigation, Today, date selection with the arrow keys, time steppers, and Apply/Cancel; you can also type a date and time directly.
 
 ![Font settings with searchable families and independent interface and note previews](docs/screenshots/font-settings.png)
 

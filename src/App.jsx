@@ -69,8 +69,10 @@ import {
 } from "lucide-react";
 import NoteEditor, { cleanHTML } from "./Editor.jsx";
 import SettingsDialog from "./SettingsDialog.jsx";
+import Select from "./Select.jsx";
 import ContextMenu from "./ContextMenu.jsx";
 import { getFontStack } from "./fonts.mjs";
+import { getAccentVariables } from "./accents.mjs";
 import { ScanTool, fileDataURL } from "./MediaTools.jsx";
 import ReminderDialog from "./ReminderDialog.jsx";
 import { formatReminder, isReminderTimestamp } from "./reminders.mjs";
@@ -181,15 +183,13 @@ function Modal({
       }
     };
     document.addEventListener("keydown", handle);
-    const focusTimer = setTimeout(
-      () =>
-        root.current
-          ?.querySelector(
-            initialFocus || "[autofocus], input, textarea, button",
-          )
-          ?.focus(),
-      30,
-    );
+    const focusTimer = setTimeout(() => {
+      const dialog = root.current;
+      if (!dialog || dialog.contains(document.activeElement)) return;
+      dialog
+        .querySelector(initialFocus || "[autofocus], input, textarea, button")
+        ?.focus();
+    }, 30);
     return () => {
       clearTimeout(focusTimer);
       document.removeEventListener("keydown", handle);
@@ -500,13 +500,21 @@ export default function App() {
   useEffect(() => {
     const mode = library.settings.theme;
     const media = matchMedia("(prefers-color-scheme: dark)");
-    const apply = () =>
-      (document.documentElement.dataset.theme =
-        mode === "system" ? (media.matches ? "dark" : "light") : mode);
+    const apply = () => {
+      const theme =
+        mode === "system" ? (media.matches ? "dark" : "light") : mode;
+      const root = document.documentElement;
+      root.dataset.theme = theme;
+      root.dataset.accent = library.settings.accentColor || "amber";
+      for (const [name, value] of Object.entries(
+        getAccentVariables(library.settings.accentColor, theme === "dark"),
+      ))
+        root.style.setProperty(name, value);
+    };
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [library.settings.theme]);
+  }, [library.settings.theme, library.settings.accentColor]);
   useEffect(() => {
     if (!editor) return;
     const change = () => setSelectionTick((x) => x + 1);
@@ -1365,13 +1373,26 @@ export default function App() {
                     }}
                   >
                     <div className="note-card-heading">
-                      {n.locked && <LockKeyhole size={13} />}
-                      {!!n.reminderAt && (
-                        <Bell size={13} aria-label="Has reminder" />
+                      <strong title={n.title || "New Note"}>
+                        {n.title || "New Note"}
+                      </strong>
+                      {(n.pinned || n.locked || n.reminderAt) && (
+                        <span className="note-card-indicators">
+                          {n.pinned && (
+                            <Pin size={12} aria-label="Pinned note" />
+                          )}
+                          {!!n.reminderAt && (
+                            <Bell size={12} aria-label="Has reminder" />
+                          )}
+                          {n.locked && (
+                            <LockKeyhole size={12} aria-label="Locked note" />
+                          )}
+                        </span>
                       )}
-                      <strong>{n.title || "New Note"}</strong>
                     </div>
-                    <div className="note-card-preview">
+                    <div
+                      className={`note-card-preview ${n.locked && !unlocked[n.id] ? "is-private" : !plainText(n.content) ? "is-empty" : ""}`}
+                    >
                       <span>
                         {n.locked && !unlocked[n.id]
                           ? "Locked note"
@@ -1380,27 +1401,29 @@ export default function App() {
                       </span>
                     </div>
                     <div className="note-card-footer">
-                      <span
-                        className="note-card-folder"
-                        title={
-                          library.folders.find((f) => f.id === n.folderId)
-                            ?.name || "Notes"
-                        }
-                      >
-                        <Folder size={11} />
-                        <span>
-                          {library.folders.find((f) => f.id === n.folderId)
-                            ?.name || "Notes"}
+                      <span className="note-card-meta">
+                        <span
+                          className="note-card-folder"
+                          title={
+                            library.folders.find((f) => f.id === n.folderId)
+                              ?.name || "Notes"
+                          }
+                        >
+                          <Folder size={11} />
+                          <span>
+                            {library.folders.find((f) => f.id === n.folderId)
+                              ?.name || "Notes"}
+                          </span>
                         </span>
+                        {n.tags.length > 0 && (
+                          <span className="card-tag" title={"#" + n.tags[0]}>
+                            #{n.tags[0]}
+                          </span>
+                        )}
+                        {n.content.includes("<img") && (
+                          <ImagePlus size={12} aria-label="Contains images" />
+                        )}
                       </span>
-                      {n.tags.length > 0 && (
-                        <span className="card-tag" title={"#" + n.tags[0]}>
-                          #{n.tags[0]}
-                        </span>
-                      )}
-                      {n.content.includes("<img") && (
-                        <ImagePlus size={12} aria-label="Contains images" />
-                      )}
                       <time
                         dateTime={new Date(n.updatedAt).toJSON() || undefined}
                         title={fullDate(n.updatedAt)}
@@ -2388,28 +2411,26 @@ function DialogContent({
             autoFocus
           />
         </label>
-        <label className="field-label">
-          Inside
-          <select
-            aria-label="Inside"
+        <div className="field-label">
+          <label htmlFor="folder-parent">Inside</label>
+          <Select
+            id="folder-parent"
+            label="Inside"
             value={parent}
             disabled={modal.folder?.id === "notes"}
-            onChange={(e) => setParent(e.target.value)}
-          >
-            <option value="">On My PC</option>
-            {library.folders
-              .filter(
-                (f) =>
-                  !f.smartTag &&
-                  !descendants(library.folders, modal.folder?.id).has(f.id),
-              )
-              .map((f) => (
-                <option value={f.id} key={f.id}>
-                  {f.name}
-                </option>
-              ))}
-          </select>
-        </label>
+            onChange={setParent}
+            options={[
+              { value: "", label: "On My PC" },
+              ...library.folders
+                .filter(
+                  (f) =>
+                    !f.smartTag &&
+                    !descendants(library.folders, modal.folder?.id).has(f.id),
+                )
+                .map((f) => ({ value: f.id, label: f.name })),
+            ]}
+          />
+        </div>
         {modal.folder?.id !== "notes" && (
           <label className="toggle-row">
             <span>

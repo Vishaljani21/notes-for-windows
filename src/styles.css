@@ -104,7 +104,8 @@ textarea {
   outline: none;
 }
 ::selection {
-  background: #e9c96c66;
+  background: var(--selected);
+  color: var(--text);
 }
 button:disabled:hover {
   background: none;
@@ -609,8 +610,8 @@ button:active:not(:disabled) {
   font-size: calc(12px * var(--ui-scale));
   font-weight: 600;
   color: var(--note-secondary);
-  padding: 8px 14px;
-  letter-spacing: 0.025em;
+  padding: 9px 5px 10px;
+  letter-spacing: 0.01em;
 }
 .note-group-label > span {
   display: flex;
@@ -623,37 +624,27 @@ button:active:not(:disabled) {
   font-variant-numeric: tabular-nums;
 }
 .note-group-label:not(:first-child) {
-  margin-top: 14px;
+  margin-top: 17px;
 }
 .note-group-label svg {
-  color: #a69670;
+  color: var(--accent);
 }
 .note-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   text-align: left;
-  padding: 16px 14px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  padding: 14px 15px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 11px;
+  background: var(--paper);
   position: relative;
-  min-height: 128px;
+  min-height: 116px;
   min-width: 0;
-  margin-bottom: 2px;
-}
-.note-card::after {
-  content: "";
-  position: absolute;
-  bottom: -2px;
-  left: 14px;
-  right: 14px;
-  height: 1px;
-  background: var(--border);
-  opacity: 0.65;
-  pointer-events: none;
-}
-.note-card.selected::after,
-.note-card:hover::after {
-  opacity: 0;
+  margin-bottom: 8px;
+  transition:
+    background 0.14s,
+    border-color 0.14s;
 }
 .note-card.selected {
   background: var(--note-selected);
@@ -662,10 +653,10 @@ button:active:not(:disabled) {
 .note-card.selected::before {
   content: "";
   position: absolute;
-  left: 0;
+  left: -1px;
   width: 3px;
-  top: 21px;
-  bottom: 21px;
+  top: 15px;
+  bottom: 15px;
   border-radius: 0 3px 3px 0;
   background: var(--note-focus);
 }
@@ -675,31 +666,54 @@ button:active:not(:disabled) {
 }
 .note-card:hover:not(.selected) {
   background: var(--note-hover);
+  border-color: color-mix(in srgb, var(--note-meta) 35%, var(--border));
 }
 .note-card-heading {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 10px;
   min-width: 0;
+  width: 100%;
 }
 .note-card-heading strong {
   font-size: calc(15px * var(--ui-scale));
-  font-weight: 600;
+  font-weight: 650;
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.45;
+  line-height: 1.4;
   letter-spacing: 0;
 }
-.note-card-heading svg {
-  color: var(--muted);
+.note-card-indicators {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  color: var(--note-meta);
+}
+.note-card-indicators svg {
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
+}
+.note-card.selected .note-card-indicators {
+  color: var(--accent);
 }
 .note-card-preview {
-  margin-top: 7px;
+  margin-top: 6px;
   font-size: calc(13.5px * var(--ui-scale));
-  line-height: 1.55;
+  line-height: 1.5;
   overflow: hidden;
   color: var(--note-secondary);
+}
+.note-card-preview.is-empty,
+.note-card-preview.is-private {
+  color: var(--note-meta);
+  font-size: calc(12.5px * var(--ui-scale));
+}
+.note-card-preview.is-empty {
+  opacity: 0.78;
 }
 .note-card-preview > span {
   display: -webkit-box;
@@ -711,13 +725,21 @@ button:active:not(:disabled) {
 .note-card-footer {
   display: flex;
   align-items: center;
-  align-items: center;
-  margin-top: 11px;
-  gap: 7px;
+  margin-top: auto;
+  padding-top: 13px;
+  gap: 9px;
   color: var(--note-meta);
   font-size: calc(11.5px * var(--ui-scale));
   min-width: 0;
-  flex-wrap: wrap;
+  width: 100%;
+}
+.note-card-meta {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 .note-card-folder {
   display: flex;
@@ -725,14 +747,15 @@ button:active:not(:disabled) {
   gap: 5px;
   min-width: 0;
   flex: 0 1 auto;
+  max-width: 100%;
 }
 .note-card-folder > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 95px;
+  max-width: 110px;
 }
-.note-card-footer > svg {
+.note-card-meta > svg {
   flex-shrink: 0;
 }
 .note-card-footer time {
@@ -741,13 +764,15 @@ button:active:not(:disabled) {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   font-size: calc(11px * var(--ui-scale));
+  opacity: 0.9;
 }
 .note-card-footer .card-tag {
   background: var(--note-tag-bg);
   border-radius: 4px;
   padding: 2px 5px;
   min-width: 0;
-  max-width: 80px;
+  max-width: 105px;
+  flex: 0 1 auto;
   font-size: calc(10.5px * var(--ui-scale));
   line-height: 1.4;
   white-space: nowrap;
@@ -814,7 +839,7 @@ button:active:not(:disabled) {
 .gallery-view .note-cards {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 9px;
+  gap: 10px;
 }
 .gallery-view .note-group-label {
   grid-column: 1/-1;
@@ -822,8 +847,9 @@ button:active:not(:disabled) {
 .gallery-view .note-card {
   border: 1px solid var(--border);
   background: var(--paper);
-  border-radius: 7px;
+  border-radius: 11px;
   min-height: 196px;
+  margin-bottom: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -833,11 +859,15 @@ button:active:not(:disabled) {
   background: var(--note-selected);
   border-color: var(--note-selected-border);
 }
-.gallery-view .note-card::after {
-  display: none;
-}
 .gallery-view .note-card-heading {
   width: 100%;
+  align-items: flex-start;
+  gap: 7px;
+}
+.gallery-view .note-card-indicators {
+  flex-direction: column;
+  padding-top: 4px;
+  gap: 5px;
 }
 .gallery-view .note-card-heading strong {
   white-space: normal;
@@ -863,7 +893,7 @@ button:active:not(:disabled) {
   display: none;
 }
 .gallery-view .note-card-folder > span {
-  max-width: 60px;
+  max-width: 100%;
 }
 .gallery-view .note-card-footer {
   gap: 5px;
@@ -1073,15 +1103,15 @@ button:active:not(:disabled) {
   background: var(--paper);
 }
 .note-prose input[type="checkbox"]:checked {
-  background: #ddb34e;
-  border-color: #ddb34e;
+  background: var(--gold);
+  border-color: var(--gold);
 }
 .note-prose input[type="checkbox"]:checked:after {
   content: "";
   width: 7px;
   height: 4px;
-  border-left: 1.5px solid white;
-  border-bottom: 1.5px solid white;
+  border-left: 1.5px solid var(--accent-ink, #473919);
+  border-bottom: 1.5px solid var(--accent-ink, #473919);
   transform: rotate(-45deg);
   position: absolute;
   left: 4px;
@@ -1499,12 +1529,12 @@ button:active:not(:disabled) {
   background: var(--soft);
 }
 .button.primary {
-  background: #e8bd57;
-  color: #473919;
-  border-color: #e0b44a;
+  background: var(--gold);
+  color: var(--accent-ink, #473919);
+  border-color: var(--gold);
 }
 .button.primary:hover {
-  background: #e1b349;
+  background: var(--accent-hover, #e1b349);
 }
 .button.danger {
   color: var(--danger);
@@ -1621,7 +1651,7 @@ button:active:not(:disabled) {
 .field-label select:focus,
 textarea:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px #e5bf6022;
+  box-shadow: 0 0 0 2px var(--selected);
 }
 .field-label input::placeholder {
   color: var(--subtle);

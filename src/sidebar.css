@@ -3,8 +3,8 @@
   --folder-surface: #f0efed;
   --folder-text: #383735;
   --folder-secondary: #64615c;
-  --folder-icon: #bd8808;
-  --folder-action: #8e6607;
+  --folder-icon: var(--accent);
+  --folder-action: var(--accent);
   --folder-selected: #dedddb;
   --folder-hover: #e6e5e2;
   --folder-search: #e4e3e0;
@@ -21,8 +21,8 @@
   --folder-surface: #292929;
   --folder-text: #ecebea;
   --folder-secondary: #aaa8a3;
-  --folder-icon: #e8b633;
-  --folder-action: #e8b633;
+  --folder-icon: var(--accent);
+  --folder-action: var(--accent);
   --folder-selected: #414141;
   --folder-hover: #343434;
   --folder-search: #363636;

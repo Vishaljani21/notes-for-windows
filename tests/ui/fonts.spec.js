@@ -1,3 +1,4 @@
+const { chooseSelect } = require("./helpers/select.js");
 const { test, expect } = require("@playwright/test");
 
 test("every bundled font has a loadable regular face", async ({ page }) => {
@@ -27,22 +28,26 @@ test("font search, independent note fonts, persistence, and reset work offline",
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("tab", { name: "Fonts & writing", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Interface font", exact: true })
+    .click();
   await expect(
-    page.getByLabel("Interface font", { exact: true }).locator("option"),
+    page
+      .getByRole("listbox", { name: "Interface font", exact: true })
+      .getByRole("option"),
   ).toHaveCount(62);
+  await page.keyboard.press("Escape");
   await page
     .getByRole("searchbox", {
       name: "Search interface fonts",
       exact: true,
     })
     .fill("roboto");
-  await page
-    .getByLabel("Interface font", { exact: true })
-    .selectOption("roboto");
+  await chooseSelect(page, "Interface font", "roboto");
   await page
     .getByRole("searchbox", { name: "Search note fonts", exact: true })
     .fill("lora");
-  await page.getByLabel("Note font", { exact: true }).selectOption("lora");
+  await chooseSelect(page, "Note font", "lora");
   await expect(
     page.getByLabel("Interface font preview", { exact: true }),
   ).toHaveCSS("font-family", /Roboto/);
@@ -73,26 +78,24 @@ test("font search, independent note fonts, persistence, and reset work offline",
   );
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("tab", { name: "Fonts & writing", exact: true }).click();
-  await expect(page.getByLabel("Interface font", { exact: true })).toHaveValue(
-    "roboto",
-  );
-  await expect(page.getByLabel("Note font", { exact: true })).toHaveValue(
-    "lora",
-  );
+  await expect(
+    page.getByRole("combobox", { name: "Interface font", exact: true }),
+  ).toHaveAttribute("data-value", "roboto");
+  await expect(
+    page.getByRole("combobox", { name: "Note font", exact: true }),
+  ).toHaveAttribute("data-value", "lora");
   await context.setOffline(true);
-  await page
-    .getByLabel("Interface font", { exact: true })
-    .selectOption("sans-serif");
+  await chooseSelect(page, "Interface font", "sans-serif");
   await expect(
     page.getByLabel("Interface font preview", { exact: true }),
   ).toHaveCSS("font-family", /Arial/);
   await page.getByRole("button", { name: "Reset fonts", exact: true }).click();
-  await expect(page.getByLabel("Interface font", { exact: true })).toHaveValue(
-    "system",
-  );
-  await expect(page.getByLabel("Note font", { exact: true })).toHaveValue(
-    "inherit",
-  );
+  await expect(
+    page.getByRole("combobox", { name: "Interface font", exact: true }),
+  ).toHaveAttribute("data-value", "system");
+  await expect(
+    page.getByRole("combobox", { name: "Note font", exact: true }),
+  ).toHaveAttribute("data-value", "inherit");
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByLabel("Note content")).toHaveCSS(
     "font-family",

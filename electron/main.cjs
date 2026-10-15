@@ -12,6 +12,7 @@ const {
   Tray,
   nativeImage,
   clipboard,
+  nativeTheme,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -57,6 +58,8 @@ let tray;
 let reminderScheduler;
 let reminderAlerts;
 let reminderDelivery;
+let accentPalettes = {};
+let reminderAppearance = { theme: "system", accentColor: undefined };
 let pendingWrite = Promise.resolve();
 const quitRequested = process.argv.includes("--quit");
 const ownsInstance = app.requestSingleInstanceLock();
@@ -102,6 +105,31 @@ function updateTray(settings) {
     tray?.destroy();
     tray = undefined;
   }
+}
+function updateReminderAppearance(settings) {
+  const theme = ["light", "dark", "system"].includes(settings?.theme)
+    ? settings.theme
+    : "system";
+  const accentColor =
+    typeof settings?.accentColor === "string" &&
+    Object.hasOwn(accentPalettes, settings.accentColor)
+      ? settings.accentColor
+      : Object.keys(accentPalettes)[0];
+  const changed =
+    theme !== reminderAppearance.theme ||
+    accentColor !== reminderAppearance.accentColor;
+  reminderAppearance = { theme, accentColor };
+  if (changed) reminderAlerts?.refreshAppearance();
+}
+function getReminderAppearance() {
+  const dark =
+    reminderAppearance.theme === "dark" ||
+    (reminderAppearance.theme === "system" && nativeTheme.shouldUseDarkColors);
+  const theme = dark ? "dark" : "light";
+  return {
+    theme,
+    variables: accentPalettes[reminderAppearance.accentColor]?.[theme] || {},
+  };
 }
 const dataPath = () => path.join(app.getPath("userData"), "notes-data.json");
 const trusted = (event) =>
@@ -186,6 +214,7 @@ ipcMain.handle("notes:load", async (event) => {
   }
   if (library?.version === 1 && Array.isArray(library.notes)) {
     updateTray(library.settings);
+    updateReminderAppearance(library.settings);
     return reminderScheduler.replaceLibrary(library);
   }
   return library;
@@ -212,6 +241,7 @@ ipcMain.handle("notes:save", (event, data) => {
       await fs.copyFile(dataPath() + ".tmp", dataPath() + ".bak");
       await fs.rename(dataPath() + ".tmp", dataPath());
       updateTray(data.settings);
+      updateReminderAppearance(data.settings);
       // Native delivery receipts are independent from renderer saves. A
       // receipt failure must never turn a successful note save into an error.
       await reminderScheduler.replaceLibrary(data).catch(console.error);
@@ -258,12 +288,27 @@ for (const action of ["minimize", "maximize", "close"])
         : mainWindow.maximize();
     else mainWindow[action]();
   });
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!ownsInstance || quitRequested) return;
   app.setAppUserModelId(appUserModelId);
+  try {
+    const palettes = JSON.parse(
+      await fs.readFile(path.join(__dirname, "../dist/accents.json"), "utf8"),
+    );
+    if (palettes && typeof palettes === "object" && !Array.isArray(palettes))
+      accentPalettes = palettes;
+  } catch {
+    // Older or incomplete development builds retain the safe popup defaults.
+  }
+  updateReminderAppearance();
   reminderAlerts = createReminderAlerts({
     iconPath: appIconPath,
     onOpen: openReminderNote,
+    getAppearance: getReminderAppearance,
+  });
+  nativeTheme.on("updated", () => {
+    if (reminderAppearance.theme === "system")
+      reminderAlerts?.refreshAppearance();
   });
   reminderDelivery = createReminderDelivery({
     Notification,

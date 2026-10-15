@@ -1,6 +1,7 @@
 import React, { useId, useState } from "react";
 import { Search } from "lucide-react";
 import { FONTS, FONT_GROUPS, getFontStack } from "./fonts.mjs";
+import Select from "./Select.jsx";
 
 export default function FontPicker({
   label,
@@ -41,33 +42,30 @@ export default function FontPicker({
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
-        <select
+        <Select
           id={controlId}
-          aria-label={label}
+          label={label}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {allowInherit && <option value="inherit">Same as interface</option>}
-          {selected && !matches.some((font) => font.id === value) && (
-            <option value={selected.id}>{selected.family} (current)</option>
-          )}
-          {FONT_GROUPS.map((group) => {
-            const fonts = matches.filter((font) => font.group === group);
-            return fonts.length ? (
-              <optgroup key={group} label={group}>
-                {fonts.map((font) => (
-                  <option
-                    key={font.id}
-                    value={font.id}
-                    style={{ fontFamily: font.stack }}
-                  >
-                    {font.family}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null;
-          })}
-        </select>
+          onChange={onChange}
+          options={[
+            ...(allowInherit
+              ? [{ value: "inherit", label: "Same as interface" }]
+              : []),
+            ...(selected && !matches.some((font) => font.id === value)
+              ? [{ value: selected.id, label: `${selected.family} (current)` }]
+              : []),
+            ...FONT_GROUPS.flatMap((group) =>
+              matches
+                .filter((font) => font.group === group)
+                .map((font) => ({
+                  value: font.id,
+                  label: font.family,
+                  group,
+                  style: { fontFamily: font.stack },
+                })),
+            ),
+          ]}
+        />
       </div>
       {query && (
         <p className="helper font-match-count" role="status">

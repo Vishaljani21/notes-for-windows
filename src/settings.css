@@ -208,7 +208,7 @@
   background: #efeee9;
 }
 .theme-mini-sidebar i:first-child {
-  background: #c69724;
+  background: var(--gold);
   opacity: 0.9;
 }
 .theme-mini-list {
@@ -233,7 +233,7 @@
   border-color: #ffffff09;
 }
 .theme-dark .theme-mini-sidebar i:first-child {
-  background: #e8bf5b;
+  background: var(--gold);
 }
 .theme-system .theme-miniature {
   background: linear-gradient(120deg, #f5f4f0 49.5%, #292824 50%);
@@ -259,6 +259,103 @@
   line-height: 1.7;
   color: var(--muted);
   margin: 12px 0 22px;
+}
+.settings-accent-picker {
+  margin-bottom: 20px;
+}
+.settings-accent-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.settings-accent-heading h4 {
+  margin: 0 0 3px;
+  font-size: calc(14px * var(--ui-scale));
+  font-weight: 600;
+}
+.settings-accent-heading p {
+  margin: 0;
+  font-size: calc(12px * var(--ui-scale));
+  color: var(--muted);
+}
+.settings-accent-heading .text-button {
+  font-size: calc(12px * var(--ui-scale));
+}
+.accent-groups {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--hover);
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+.accent-groups button {
+  font-size: calc(12px * var(--ui-scale));
+  line-height: 1.5;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--muted);
+}
+.accent-groups button[aria-pressed="true"] {
+  background: var(--paper);
+  color: var(--text);
+  box-shadow: 0 1px 3px #0001;
+}
+.accent-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.accent-swatches > button {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 3px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: calc(11px * var(--ui-scale));
+  line-height: 1.4;
+}
+.accent-swatches > button:hover {
+  background: var(--hover);
+}
+.accent-swatches > button[aria-checked="true"] {
+  background: var(--selected);
+  border-color: var(--gold);
+}
+.accent-swatch-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  color: var(--swatch-ink);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px #0001;
+}
+.settings-accent-picker > .settings-hint {
+  margin: 12px 0 0;
+}
+:root[data-accent^="neon-"]
+  .accent-swatches
+  > button[aria-checked="true"]
+  .accent-swatch-dot {
+  box-shadow: var(--accent-glow);
+}
+:root[data-accent^="neon-"] .button.primary {
+  box-shadow: var(--accent-glow);
+}
+@media (max-width: 600px) {
+  .accent-swatches {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .settings-accent-heading .text-button {
+    flex-shrink: 0;
+  }
 }
 .settings-card {
   border: 1px solid var(--border);
@@ -495,7 +592,7 @@
   background: var(--gold);
 }
 .settings-switch:checked:before {
-  background: #fff;
+  background: var(--accent-ink, #fff);
   transform: translateX(16px);
   box-shadow: 0 1px 2px #0002;
 }

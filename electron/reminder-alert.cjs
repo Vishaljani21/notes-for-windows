@@ -5,7 +5,7 @@ const { reminderTitle } = require("./reminder-delivery.cjs");
 
 // A narrow, separate renderer keeps reminders visible independently of Windows
 // banner suppression. It cannot read or edit the notes library.
-function createReminderAlerts({ iconPath, onOpen }) {
+function createReminderAlerts({ iconPath, onOpen, getAppearance }) {
   let window;
   let loading;
   const entries = new Map();
@@ -13,13 +13,16 @@ function createReminderAlerts({ iconPath, onOpen }) {
   const trusted = (event) =>
     event.sender === window?.webContents &&
     event.senderFrame === window?.webContents.mainFrame;
-  const snapshot = () =>
-    [...entries.values()].map(({ id, title, reminderAt, isTest }) => ({
+  const snapshot = () => {
+    const appearance = getAppearance?.();
+    return [...entries.values()].map(({ id, title, reminderAt, isTest }) => ({
       id,
       title,
       reminderAt,
       isTest,
+      ...(appearance ? { appearance } : {}),
     }));
+  };
   function publish() {
     if (window && !window.isDestroyed())
       window.webContents.send("reminder-alert:items", snapshot());
@@ -56,8 +59,11 @@ function createReminderAlerts({ iconPath, onOpen }) {
   function waitForRendered(id) {
     return new Promise((resolve, reject) => {
       let pending = pendingRenders.get(id);
-      if (!pending) pendingRenders.set(id, pending = new Set());
-      const confirm = () => { clearTimeout(timer); resolve(); };
+      if (!pending) pendingRenders.set(id, (pending = new Set()));
+      const confirm = () => {
+        clearTimeout(timer);
+        resolve();
+      };
       const timer = setTimeout(() => {
         pending.delete(confirm);
         if (!pending.size) pendingRenders.delete(id);
@@ -69,7 +75,9 @@ function createReminderAlerts({ iconPath, onOpen }) {
 
   function getWindow() {
     if (window && !window.isDestroyed()) return loading;
-    const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+    const area = screen.getDisplayNearestPoint(
+      screen.getCursorScreenPoint(),
+    ).workArea;
     const width = Math.min(390, area.width);
     const height = Math.min(370, area.height);
     window = new BrowserWindow({
@@ -97,8 +105,8 @@ function createReminderAlerts({ iconPath, onOpen }) {
         partition: "reminder-alerts",
       },
     });
-    window.webContents.session.setPermissionRequestHandler(
-      (_, __, callback) => callback(false),
+    window.webContents.session.setPermissionRequestHandler((_, __, callback) =>
+      callback(false),
     );
     window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     window.webContents.on("will-navigate", (event) => event.preventDefault());
@@ -117,8 +125,15 @@ function createReminderAlerts({ iconPath, onOpen }) {
         activeWindow.destroy();
       }, 5000);
       activeWindow.loadFile(path.join(__dirname, "reminder-alert.html")).then(
-        () => { clearTimeout(timer); resolve(); },
-        (error) => { clearTimeout(timer); reject(error); activeWindow.destroy(); },
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+          activeWindow.destroy();
+        },
       );
     });
     return loading;
@@ -142,7 +157,9 @@ function createReminderAlerts({ iconPath, onOpen }) {
       if (!window || window.isDestroyed())
         throw new Error("The reminder window closed before it could appear.");
       if (!window.isVisible()) {
-        const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+        const area = screen.getDisplayNearestPoint(
+          screen.getCursorScreenPoint(),
+        ).workArea;
         const width = Math.min(390, area.width);
         const height = Math.min(370, area.height);
         window.setBounds({
@@ -162,10 +179,15 @@ function createReminderAlerts({ iconPath, onOpen }) {
             activeWindow.removeListener("show", shown);
             activeWindow.removeListener("closed", closed);
           };
-          const shown = () => { cleanup(); resolve(); };
+          const shown = () => {
+            cleanup();
+            resolve();
+          };
           const closed = () => {
             cleanup();
-            reject(new Error("The reminder window closed before it could appear."));
+            reject(
+              new Error("The reminder window closed before it could appear."),
+            );
           };
           activeWindow.once("show", shown);
           activeWindow.once("closed", closed);
@@ -188,6 +210,7 @@ function createReminderAlerts({ iconPath, onOpen }) {
 
   return {
     show,
+    refreshAppearance: publish,
     destroy() {
       ipcMain.removeHandler("reminder-alert:ready");
       ipcMain.removeAllListeners("reminder-alert:action");

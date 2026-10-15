@@ -6,6 +6,7 @@ playwright-report/
 *.log
 .cache/
 public/ocr/
+public/accents.json
 .env
 .env.*
 !.env.example

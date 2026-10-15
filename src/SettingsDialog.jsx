@@ -16,7 +16,10 @@ import {
   Info,
 } from "lucide-react";
 import FontPicker from "./FontPicker.jsx";
+import Select from "./Select.jsx";
 import { FONTS } from "./fonts.mjs";
+import { ACCENTS, DEFAULT_ACCENT, getAccentVariables } from "./accents.mjs";
+import { version as appVersion } from "../package.json";
 import "./settings.css";
 
 const sections = [
@@ -46,6 +49,16 @@ export default function SettingsDialog({
   clearReminderError,
 }) {
   const [active, setActive] = useState("appearance");
+  const selectedAccent =
+    ACCENTS.find((accent) => accent.id === settings.accentColor) || ACCENTS[0];
+  const [accentGroup, setAccentGroup] = useState(selectedAccent.group);
+  const accentChoices = ACCENTS.filter(
+    (accent) => accent.group === accentGroup,
+  );
+  const swatches = useRef([]);
+  useEffect(() => {
+    setAccentGroup(selectedAccent.group);
+  }, [selectedAccent.id]);
   const [compact, setCompact] = useState(
     () => matchMedia("(max-width: 760px)").matches,
   );
@@ -155,7 +168,7 @@ export default function SettingsDialog({
             <NotebookPen size={22} strokeWidth={1.5} aria-hidden="true" />
             <div>
               <strong>Notes for Windows</strong>
-              <span>Version 1.1.7</span>
+              <span>Version {appVersion}</span>
             </div>
           </div>
         </aside>
@@ -214,23 +227,126 @@ export default function SettingsDialog({
             <p className="settings-hint">
               System follows your Windows light or dark appearance.
             </p>
+            <div className="settings-accent-picker settings-card">
+              <div className="settings-accent-heading">
+                <div>
+                  <h4>Accent color</h4>
+                  <p>{selectedAccent.label}</p>
+                </div>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setSettings({ accentColor: DEFAULT_ACCENT })}
+                >
+                  Reset accent
+                </button>
+              </div>
+              <div
+                className="accent-groups"
+                role="group"
+                aria-label="Accent palette"
+              >
+                {[
+                  ["Classic", "Normal colors"],
+                  ["Neon", "Neon colors"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={accentGroup === id}
+                    onClick={() => setAccentGroup(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div
+                className="accent-swatches"
+                role="radiogroup"
+                aria-label="Accent color"
+              >
+                {accentChoices.map((accent, index) => (
+                  <button
+                    key={accent.id}
+                    ref={(element) => {
+                      swatches.current[index] = element;
+                    }}
+                    type="button"
+                    role="radio"
+                    aria-label={accent.label}
+                    aria-checked={selectedAccent.id === accent.id}
+                    tabIndex={
+                      selectedAccent.id === accent.id ||
+                      (!accentChoices.some(
+                        (item) => item.id === selectedAccent.id,
+                      ) &&
+                        index === 0)
+                        ? 0
+                        : -1
+                    }
+                    onClick={() => setSettings({ accentColor: accent.id })}
+                    onKeyDown={(event) => {
+                      const direction = ["ArrowRight", "ArrowDown"].includes(
+                        event.key,
+                      )
+                        ? 1
+                        : ["ArrowLeft", "ArrowUp"].includes(event.key)
+                          ? -1
+                          : 0;
+                      if (
+                        !direction &&
+                        event.key !== "Home" &&
+                        event.key !== "End"
+                      )
+                        return;
+                      event.preventDefault();
+                      const next =
+                        event.key === "Home"
+                          ? 0
+                          : event.key === "End"
+                            ? accentChoices.length - 1
+                            : (index + direction + accentChoices.length) %
+                              accentChoices.length;
+                      setSettings({ accentColor: accentChoices[next].id });
+                      swatches.current[next]?.focus();
+                    }}
+                    style={{
+                      "--swatch-color": accent.color,
+                      "--swatch-ink": getAccentVariables(accent.id, false)[
+                        "--accent-ink"
+                      ],
+                    }}
+                  >
+                    <span className="accent-swatch-dot">
+                      {selectedAccent.id === accent.id && (
+                        <Check size={17} aria-hidden="true" />
+                      )}
+                    </span>
+                    <span>{accent.label.replace(/^Neon /, "")}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="settings-hint">
+                Applies to selections, buttons, and highlights. Neon colors add
+                a subtle glow.
+              </p>
+            </div>
             <div className="settings-card settings-row">
               <div className="settings-row-copy">
                 <label htmlFor="settings-ui-scale">Interface text size</label>
                 <p>Adjust the sidebar, note list, menus, and buttons.</p>
               </div>
-              <select
+              <Select
                 id="settings-ui-scale"
-                aria-label="Interface text size"
+                label="Interface text size"
                 value={settings.uiScale || 1}
-                onChange={(event) =>
-                  setSettings({ uiScale: Number(event.target.value) })
-                }
-              >
-                <option value="1">Comfortable</option>
-                <option value="1.1">Large</option>
-                <option value="1.2">Extra large</option>
-              </select>
+                onChange={(value) => setSettings({ uiScale: Number(value) })}
+                options={[
+                  { value: "1", label: "Comfortable" },
+                  { value: "1.1", label: "Large" },
+                  { value: "1.2", label: "Extra large" },
+                ]}
+              />
             </div>
             <div className="settings-reading-preview">
               <span className="settings-eyebrow">Interface preview</span>
@@ -452,7 +568,7 @@ export default function SettingsDialog({
             <div className="settings-about">
               <NotebookPen size={22} strokeWidth={1.5} />
               <div>
-                <strong>Notes for Windows · Version 1.1.7</strong>
+                <strong>Notes for Windows · Version {appVersion}</strong>
                 <p>
                   An independent, open-source app inspired by Apple Notes.
                   <br />

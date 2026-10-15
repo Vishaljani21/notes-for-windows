@@ -1,5 +1,6 @@
 import { isFontId } from "./fonts.mjs";
 import { normalizeReminder } from "./reminders.mjs";
+import { DEFAULT_ACCENT, isAccentId } from "./accents.mjs";
 export const uid = () => crypto.randomUUID();
 export const escapeHTML = (value = "") =>
   String(value).replace(
@@ -100,6 +101,9 @@ export function validateLibrary(data) {
       fontSize: 18,
       uiScale: 1,
       ...data.settings,
+      accentColor: isAccentId(data.settings?.accentColor)
+        ? data.settings.accentColor
+        : DEFAULT_ACCENT,
       remindersInTray:
         typeof data.settings?.remindersInTray === "boolean"
           ? data.settings.remindersInTray
@@ -235,6 +239,7 @@ export function seedLibrary() {
       fontSize: 18,
       uiScale: 1,
       remindersInTray: true,
+      accentColor: DEFAULT_ACCENT,
     },
     folders: [
       { id: "notes", name: "Notes", parentId: null },

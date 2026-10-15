@@ -1,6 +1,25 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 async function main() {
+  const { ACCENTS, getAccentVariables } = await import(
+    pathToFileURL(path.join(__dirname, "../src/accents.mjs")).href
+  );
+  fs.writeFileSync(
+    path.join(__dirname, "../public/accents.json"),
+    JSON.stringify(
+      Object.fromEntries(
+        ACCENTS.map(({ id }) => [
+          id,
+          {
+            light: getAccentVariables(id, false),
+            dark: getAccentVariables(id, true),
+          },
+        ]),
+      ),
+    ),
+    "utf8",
+  );
   const target = path.join(__dirname, "../public/ocr");
   fs.mkdirSync(target, { recursive: true });
   fs.copyFileSync(

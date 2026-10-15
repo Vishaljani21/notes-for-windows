@@ -1,3 +1,4 @@
+const { chooseSelect } = require("./helpers/select.js");
 const { test, expect } = require("@playwright/test");
 
 test("interface text size persists and folders remain reachable in compact windows", async ({
@@ -9,9 +10,7 @@ test("interface text size persists and folders remain reachable in compact windo
     "A little room for big ideas",
   );
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page
-    .getByLabel("Interface text size", { exact: true })
-    .selectOption("1.2");
+  await chooseSelect(page, "Interface text size", "1.2");
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(
     page.getByText("All changes saved", { exact: true }),
@@ -19,8 +18,8 @@ test("interface text size persists and folders remain reachable in compact windo
   await page.reload();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(
-    page.getByLabel("Interface text size", { exact: true }),
-  ).toHaveValue("1.2");
+    page.getByRole("combobox", { name: "Interface text size", exact: true }),
+  ).toHaveAttribute("data-value", "1.2");
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.setViewportSize({ width: 700, height: 600 });
   await page.getByRole("button", { name: "Show folders", exact: true }).click();

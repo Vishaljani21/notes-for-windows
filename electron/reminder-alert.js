@@ -1,6 +1,27 @@
 const root = document.getElementById("reminders");
 const count = document.getElementById("reminder-count");
+const appearanceVariables = [
+  "--gold",
+  "--accent",
+  "--accent-ink",
+  "--accent-hover",
+  "--selected",
+];
+const hexColor = /^#(?:[a-f\d]{3}|[a-f\d]{4}|[a-f\d]{6}|[a-f\d]{8})$/i;
+function applyAppearance(appearance) {
+  const element = document.documentElement;
+  if (["light", "dark"].includes(appearance?.theme))
+    element.dataset.theme = appearance.theme;
+  else delete element.dataset.theme;
+  for (const name of appearanceVariables) {
+    const value = appearance?.variables?.[name];
+    element.style.removeProperty(name);
+    if (typeof value === "string" && hexColor.test(value))
+      element.style.setProperty(name, value);
+  }
+}
 function render(items) {
+  applyAppearance(items[0]?.appearance);
   count.hidden = items.length < 2;
   count.textContent = `${items.length} waiting`;
   count.setAttribute("aria-label", `${items.length} reminders`);
@@ -24,16 +45,24 @@ function render(items) {
     const copy = document.createElement("div");
     copy.className = "due-copy";
     const time = document.createElement("strong");
-    time.textContent = item.isTest ? "Your reminder alerts are working." : new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(item.reminderAt);
+    time.textContent = item.isTest
+      ? "Your reminder alerts are working."
+      : new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(
+          item.reminderAt,
+        );
     const date = document.createElement("span");
-    date.textContent = item.isTest ? "You’re ready for your next reminder." : `Due ${new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(item.reminderAt)}`;
+    date.textContent = item.isTest
+      ? "You’re ready for your next reminder."
+      : `Due ${new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(item.reminderAt)}`;
     copy.append(time, date);
     detail.append(clock, copy);
     const actions = document.createElement("div");
     actions.className = "actions";
     const dismiss = document.createElement("button");
     dismiss.textContent = "Dismiss";
-    dismiss.addEventListener("click", () => window.reminderAlert.dismiss(item.id));
+    dismiss.addEventListener("click", () =>
+      window.reminderAlert.dismiss(item.id),
+    );
     const open = document.createElement("button");
     open.className = "primary";
     open.textContent = item.isTest ? "Open Notes" : "Open note";

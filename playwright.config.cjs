@@ -3,6 +3,8 @@ module.exports = defineConfig({
   testDir: "./tests/ui",
   outputDir: "./test-results/ui",
   timeout: 45000,
+  // Cold Windows runners can spend a few seconds initializing browser storage.
+  expect: { timeout: 10000 },
   retries: 0,
   workers: 1,
   use: {

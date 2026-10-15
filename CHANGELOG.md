@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.8 — 2026-10-16
+
+- Refined note cards with clearer titles, balanced metadata, quieter empty states, and consistent rounded surfaces.
+- Added 18 normal and neon accent colors, saved on-device and applied across selections, controls, menus, and reminder popups.
+- Replaced native dropdowns with grouped, keyboard-accessible controls that match the app.
+- Added a custom calendar and time picker with month navigation, keyboard controls, and a preview before applying.
+
 ## 1.1.7 — 2026-10-16
 
 - Redesigned Settings with category navigation, a fixed header and footer, compact font previews, and clear save feedback.
