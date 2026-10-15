@@ -74,6 +74,7 @@ const Attachment = Node.create({
     ];
   },
 });
+// Keep clips saved by earlier versions readable when notes are edited or exported.
 const AudioClip = Node.create({
   name: "audioClip",
   group: "block",

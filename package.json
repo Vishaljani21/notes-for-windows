@@ -1,6 +1,6 @@
 {
   "name": "notes-for-windows",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "A thoughtfully familiar, local-first notes app for Windows.",
   "main": "electron/main.cjs",
@@ -65,7 +65,6 @@
     "@fontsource/ubuntu": "^5.3.0",
     "@fontsource/ubuntu-mono": "^5.3.0",
     "@fontsource/work-sans": "^5.3.0",
-    "@huggingface/transformers": "^4.3.1",
     "@playwright/test": "^1.55.1",
     "@tiptap/core": "^3.0.0",
     "@tiptap/extension-details": "^3.0.0",
@@ -102,6 +101,12 @@
       "THIRD_PARTY_NOTICES.md",
       "licenses/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "public/icon.ico",
+        "to": "icons/notes-original.ico"
+      }
+    ],
     "asar": true,
     "win": {
       "target": "nsis",
@@ -109,6 +114,7 @@
       "icon": "public/icon.ico"
     },
     "nsis": {
+      "include": "scripts/installer-icons.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,

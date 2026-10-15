@@ -15,6 +15,11 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createReminderScheduler } = require("./reminders.cjs");
+const appIconPath = path.join(
+  __dirname,
+  "../dist",
+  process.platform === "win32" ? "icon.ico" : "icon.png",
+);
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "notes",
@@ -62,7 +67,7 @@ function updateTray(settings) {
   }
   if (tray) return;
   try {
-    tray = new Tray(path.join(__dirname, "../dist/icon.png"));
+    tray = new Tray(appIconPath);
     tray.setToolTip("Notes for Windows — reminders are running");
     tray.setContextMenu(
       Menu.buildFromTemplate([
@@ -194,7 +199,7 @@ app.whenReady().then(() => {
               : "Untitled note"
             ).slice(0, 120),
         body: "Your note reminder is due. Click to open it.",
-        icon: path.join(__dirname, "../dist/icon.png"),
+        icon: appIconPath,
         timeoutType: "never",
       });
       activeNotifications.add(notification);
@@ -240,7 +245,7 @@ app.whenReady().then(() => {
         responseHeaders: {
           ...details.responseHeaders,
           "Content-Security-Policy": [
-            "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co https://*.hfusercontent.com https://tessdata.projectnaptha.com https://cdn.jsdelivr.net; object-src 'none'; frame-src 'none'; base-uri 'self'",
+            "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tessdata.projectnaptha.com https://cdn.jsdelivr.net; object-src 'none'; frame-src 'none'; base-uri 'self'",
           ],
         },
       }),
@@ -258,7 +263,7 @@ app.whenReady().then(() => {
     show: app.isPackaged || process.env.NOTES_TEST_HEADLESS !== "1",
     backgroundColor: "#f3f2f0",
     title: "Notes for Windows",
-    icon: path.join(__dirname, "../dist/icon.png"),
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,

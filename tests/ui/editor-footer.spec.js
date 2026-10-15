@@ -63,28 +63,13 @@ test("note tags stay above the save footer while short and long notes scroll", a
   }
 });
 
-test("microphone toolbar button opens audio tools and is disabled for locked notes", async ({
+test("locked notes hide their tag controls", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.getByLabel("Note title")).toHaveValue(
     "A little room for big ideas",
   );
-  const audioButton = page.getByRole("button", {
-    name: "Record or import audio",
-    exact: true,
-  });
-  await audioButton.click();
-  await expect(
-    page.getByRole("heading", { name: "Capture the conversation" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Record audio", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Import audio", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Lock note", exact: true }).click();
   await page
     .getByLabel("Password", { exact: true })
@@ -97,7 +82,6 @@ test("microphone toolbar button opens audio tools and is disabled for locked not
     .last()
     .click();
   await expect(page.locator(".locked-screen")).toBeVisible();
-  await expect(audioButton).toBeDisabled();
   await expect(
     page.getByRole("group", { name: "Note tags", exact: true }),
   ).toHaveCount(0);

@@ -116,43 +116,7 @@ async function main() {
         .getByRole("button", { name: "Add to note", exact: true })
         .last()
         .click();
-      await page
-        .getByRole("button", { name: "Add to note", exact: true })
-        .click();
-      await page
-        .getByRole("button", {
-          name: "Record or transcribe audio",
-          exact: true,
-        })
-        .click();
-      await page
-        .locator(".tool-dialog input[type=file]")
-        .setInputFiles("tests/fixtures/speech.wav");
-      await page
-        .getByRole("button", { name: "Transcribe audio", exact: true })
-        .click();
-      await page.waitForFunction(
-        () =>
-          document.querySelector(".transcript-area textarea")?.value ||
-          /failed|could not|Could not/.test(
-            document.querySelector(".transcript-area")?.innerText || "",
-          ),
-        null,
-        { timeout: 240000 },
-      );
-      console.log(
-        "AUDIO RESULT:",
-        (await page.locator(".transcript-area").innerText()).slice(-1500),
-      );
-      assert.match(
-        await page.locator(".transcript-area textarea").inputValue(),
-        /meeting|windows|notes/i,
-      );
-      await page
-        .getByRole("button", { name: "Add to note", exact: true })
-        .last()
-        .click();
-      console.log("Actual image OCR and Whisper transcription: PASS");
+      console.log("Actual image OCR: PASS");
     }
     assert.deepEqual(errors, []);
     const exited = new Promise((resolve) => app.process().once("exit", resolve));

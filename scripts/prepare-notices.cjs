@@ -3,13 +3,9 @@ const path = require("node:path");
 const { createHash } = require("node:crypto");
 const root = path.resolve(__dirname, "..");
 const fallbackRoot = path.join(root, "third-party-license-sources");
-const fallbackAliases = {
-  "onnxruntime-common-1.30.0": "onnxruntime-1.30.0",
-  "onnxruntime-node-1.30.0": "onnxruntime-1.30.0",
-};
 
 function copyFallbackNotices(key, dest) {
-  const sourceDir = path.join(fallbackRoot, fallbackAliases[key] || key);
+  const sourceDir = path.join(fallbackRoot, key);
   const manifestPath = path.join(sourceDir, "sources.json");
   if (!fs.existsSync(manifestPath)) return [];
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -107,11 +103,11 @@ module.exports = function prepareNotices() {
   const lines = [
     "# Third-party notices",
     "",
-    "Notes for Windows is MIT-licensed. The open-source libraries, fonts, OCR, speech, and math components it uses retain their respective licenses. Unmodified upstream license and notice files are included in the `licenses/` directory.",
+    "Notes for Windows is MIT-licensed. The open-source libraries, fonts, OCR, and math components it uses retain their respective licenses. Unmodified upstream license and notice files are included in the `licenses/` directory.",
     "",
     "This inventory includes dependencies of the browser components; some optional Node-only dependencies are listed conservatively even when not included in the browser bundle. Electron and Chromium license texts are also shipped separately by Electron in the application directory.",
     "",
-    "Where an npm package omits license files, checked-in upstream texts or license headers are copied from `third-party-license-sources/`. Their `sources.json` records the upstream URL and SHA-256 digest. Full ONNX Runtime upstream notices may describe components not used in this application's browser/WASM build; the unmodified notices are retained conservatively.",
+    "Where an npm package omits license files, checked-in upstream texts or license headers are copied from `third-party-license-sources/`. Their `sources.json` records the upstream URL and SHA-256 digest.",
     "",
     "| Package | Version | License | Upstream notices |",
     "| --- | --- | --- | --- |",

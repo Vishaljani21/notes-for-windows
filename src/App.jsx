@@ -32,7 +32,6 @@ import {
   Table2,
   Paperclip,
   ImagePlus,
-  Mic,
   Bell,
   ScanLine,
   Link2,
@@ -65,7 +64,6 @@ import {
   LoaderCircle,
   FolderOpen,
   ChevronUp,
-  CircleHelp,
   ShieldCheck,
   Circle,
   Heading1,
@@ -75,13 +73,7 @@ import {
 import NoteEditor, { cleanHTML } from "./Editor.jsx";
 import FontPicker from "./FontPicker.jsx";
 import { getFontStack, FONTS } from "./fonts.mjs";
-import {
-  AudioTool,
-  AudioQuestions,
-  qaAnswersToNodes,
-  ScanTool,
-  fileDataURL,
-} from "./MediaTools.jsx";
+import { ScanTool, fileDataURL } from "./MediaTools.jsx";
 import ReminderDialog from "./ReminderDialog.jsx";
 import { formatReminder, isReminderTimestamp } from "./reminders.mjs";
 import {
@@ -118,35 +110,6 @@ const fullDate = (time) =>
   });
 const safeName = (name) =>
   (name || "Untitled").replace(/[<>:"/\\|?*\x00-\x1f]/g, "-").slice(0, 90);
-function audioContextFromNote(html = "") {
-  const document = new DOMParser().parseFromString(
-    cleanHTML(html),
-    "text/html",
-  );
-  const transcripts = [];
-  for (const heading of document.querySelectorAll("h1,h2,h3")) {
-    if (!/^(audio )?transcript$/i.test(heading.textContent.trim())) continue;
-    const parts = [];
-    for (
-      let element = heading.nextElementSibling;
-      element;
-      element = element.nextElementSibling
-    ) {
-      if (/^H[1-3]$/.test(element.tagName)) break;
-      if (element.textContent.trim()) parts.push(element.textContent.trim());
-    }
-    if (parts.length) transcripts.push(parts.join("\n\n"));
-  }
-  const audio = [...document.querySelectorAll("audio")].find((element) =>
-    /^data:(audio\/[^;,]+|application\/octet-stream)[;,]/i.test(
-      element.getAttribute("src") || "",
-    ),
-  );
-  return {
-    transcript: transcripts.join("\n\n"),
-    audioSrc: audio?.getAttribute("src") || "",
-  };
-}
 function IconButton({
   icon: Icon,
   label,
@@ -690,15 +653,6 @@ export default function App() {
   function insert(content) {
     if (!editor || isLocked) return;
     editor.chain().focus().insertContent(content).run();
-    setMenu(null);
-  }
-  function appendToNote(content) {
-    if (!editor || isLocked) return;
-    editor
-      .chain()
-      .focus()
-      .insertContentAt(editor.state.doc.content.size, content)
-      .run();
     setMenu(null);
   }
   async function exportBackup() {
@@ -1247,9 +1201,6 @@ export default function App() {
                           #{n.tags[0]}
                         </span>
                       )}
-                      {n.content.includes("<audio") && (
-                        <Mic size={12} aria-label="Contains audio" />
-                      )}
                       {n.content.includes("<img") && (
                         <ImagePlus size={12} aria-label="Contains images" />
                       )}
@@ -1418,14 +1369,6 @@ export default function App() {
               disabled={!current || isLocked || !!current.deletedAt}
             />
             <IconButton
-              icon={Mic}
-              label="Record or import audio"
-              onClick={() =>
-                action(() => setModal({ type: "audio", noteId: current.id }))
-              }
-              disabled={!current || isLocked || !!current.deletedAt}
-            />
-            <IconButton
               icon={Bell}
               label="Set reminder"
               active={!!current?.reminderAt}
@@ -1487,35 +1430,6 @@ export default function App() {
                     }
                   >
                     Attach a file
-                  </MenuItem>
-                  <MenuItem
-                    icon={Mic}
-                    onClick={() =>
-                      action(() =>
-                        setModal({ type: "audio", noteId: current.id }),
-                      )
-                    }
-                  >
-                    Record or transcribe audio
-                  </MenuItem>
-                  <MenuItem
-                    icon={CircleHelp}
-                    disabled={!current.content.includes("<audio")}
-                    onClick={() =>
-                      action(() => {
-                        const context = audioContextFromNote(current.content);
-                        setModal(
-                          context.transcript || !context.audioSrc
-                            ? { type: "audioQuestions", ...context }
-                            : {
-                                type: "audio",
-                                initialAudioSrc: context.audioSrc,
-                              },
-                        );
-                      })
-                    }
-                  >
-                    Ask about audio
                   </MenuItem>
                   <MenuItem
                     icon={ScanLine}
@@ -1955,7 +1869,7 @@ export default function App() {
       {modal && (
         <Modal
           close={() => setModal(null)}
-          wide={["audio", "audioQuestions", "scan"].includes(modal.type)}
+          wide={modal.type === "scan"}
         >
           <DialogContent
             modal={modal}
@@ -1972,7 +1886,6 @@ export default function App() {
             setScope={setScope}
             toast={toast}
             insert={insert}
-            appendToNote={appendToNote}
             exportBackup={exportBackup}
             backupInput={backupInput}
             openNote={openNote}
@@ -1998,7 +1911,6 @@ function DialogContent({
   setScope,
   toast,
   insert,
-  appendToNote,
   exportBackup,
   backupInput,
   openNote,
@@ -2017,19 +1929,8 @@ function DialogContent({
     [parent, setParent] = useState(modal.folder?.parentId || ""),
     [smart, setSmart] = useState(!!modal.folder?.smartTag),
     [smartTag, setSmartTag] = useState(modal.folder?.smartTag || ""),
-    [result, setResult] = useState(""),
-    [audioAnswers, setAudioAnswers] = useState([]);
+    [result, setResult] = useState("");
   const settings = library.settings;
-  if (modal.type === "audio")
-    return (
-      <AudioTool
-        insert={appendToNote}
-        close={close}
-        toast={toast}
-        initialAudioSrc={modal.initialAudioSrc}
-        initialTranscript={modal.initialTranscript}
-      />
-    );
   if (modal.type === "reminder")
     return (
       <ReminderDialog
@@ -2048,46 +1949,6 @@ function DialogContent({
           toast("Reminder removed.");
         }}
       />
-    );
-  if (modal.type === "audioQuestions")
-    return (
-      <div className="tool-dialog">
-        <div className="dialog-icon">
-          <CircleHelp size={26} />
-        </div>
-        <h2>Questions about your recording</h2>
-        {modal.transcript ? (
-          <details className="transcript-reference">
-            <summary>View saved transcript</summary>
-            <p>{modal.transcript}</p>
-          </details>
-        ) : (
-          <p className="dialog-description">
-            Transcribe or import an audio recording first to ask questions about
-            it.
-          </p>
-        )}
-        <AudioQuestions
-          transcript={modal.transcript}
-          onAnswersChange={setAudioAnswers}
-          onBusyChange={setBusy}
-        />
-        <div className="dialog-actions">
-          <button className="button" onClick={close}>
-            Done
-          </button>
-          <button
-            className="button primary"
-            disabled={busy || !audioAnswers.some((answer) => answer.answer)}
-            onClick={() => {
-              appendToNote(qaAnswersToNodes(audioAnswers));
-              close();
-            }}
-          >
-            Add answers to note
-          </button>
-        </div>
-      </div>
     );
   if (modal.type === "scan")
     return <ScanTool insert={insert} close={close} toast={toast} />;
@@ -2742,7 +2603,7 @@ function DialogContent({
         {heading(
           Settings,
           "Make a little space your own",
-          "Notes for Windows · Version 1.1.1",
+          "Notes for Windows · Version 1.1.2",
         )}
         <div className="settings-section">
           <h3>Appearance</h3>

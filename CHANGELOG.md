@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2 — 2026-10-15
+
+- Removed audio recording, import, transcription, and audio questions from the toolbar and menus, along with their model workers and dependencies.
+- Kept existing audio attachments readable in previously saved notes.
+- Restored the previous Notes icon across the app and Windows shortcuts.
+
 ## 1.1.1 — 2026-10-15
 
 - Made saved-audio checks wait for the imported clip to finish saving before reloading, so clean Windows release builds verify persistence reliably.

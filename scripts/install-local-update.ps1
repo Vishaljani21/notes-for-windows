@@ -26,6 +26,20 @@ $notesInstallerProcess = Start-Process -FilePath $notesSetup -ArgumentList @('/S
 if ($notesInstallerProcess.ExitCode -ne 0) { throw "The installer returned exit code $($notesInstallerProcess.ExitCode)." }
 $notesFileVersion = (Get-Item -LiteralPath $notesInstalledExe).VersionInfo.ProductVersion
 if ($notesFileVersion -notlike "$Version*") { throw "The installed version is $notesFileVersion rather than $Version." }
+$notesShortcutIcon = Join-Path $notesInstallDir 'resources\icons\notes-original.ico'
+if (-not (Test-Path -LiteralPath $notesShortcutIcon -PathType Leaf)) { throw 'The installed original Notes icon is missing.' }
+# Notify Explorer only about the links we update. A dedicated icon path avoids
+# a stale executable icon without clearing the user's Windows icon cache.
+if (-not ('NotesShortcutIconRefresh' -as [type])) {
+  Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class NotesShortcutIconRefresh {
+  [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+  public static extern void SHChangeNotify(uint eventId, uint flags, string item, IntPtr unused);
+}
+'@
+}
 $notesLinkShell = New-Object -ComObject WScript.Shell
 $notesDesktopLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Notes for Windows.lnk'
 $notesStartLink = Join-Path ([Environment]::GetFolderPath('Programs')) 'Notes for Windows.lnk'
@@ -33,11 +47,12 @@ foreach ($notesLinkPath in @($notesDesktopLink, $notesStartLink)) {
   $notesLink = $notesLinkShell.CreateShortcut($notesLinkPath)
   $notesLink.TargetPath = $notesInstalledExe
   $notesLink.WorkingDirectory = $notesInstallDir
-  $notesLink.IconLocation = $notesInstalledExe + ',0'
+  $notesLink.IconLocation = $notesShortcutIcon + ',0'
   $notesLink.Description = 'Open Notes for Windows'
   $notesLink.WindowStyle = 1
   if ($notesLinkPath -eq $notesDesktopLink) { $notesLink.Hotkey = 'CTRL+ALT+N' }
   $notesLink.Save()
+  [NotesShortcutIconRefresh]::SHChangeNotify(0x00002000, 0x0005, $notesLinkPath, [IntPtr]::Zero)
 }
 $notesNewProcess = Start-Process -FilePath $notesInstalledExe -WorkingDirectory $notesInstallDir -PassThru
 Start-Sleep -Seconds 2

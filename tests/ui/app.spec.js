@@ -215,14 +215,9 @@ test("calculates math, links notes, inserts a collapsible section and supports d
     fullPage: true,
   });
 });
-test("audio, OCR, and attachment tools open; attached files persist; summaries use note sentences", async ({
+test("OCR and attachment tools open; attached files persist; summaries use note sentences", async ({
   page,
 }) => {
-  await menu(page, "Add to note", "Record or transcribe audio");
-  await expect(
-    page.getByRole("heading", { name: "Capture the conversation" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await menu(page, "Add to note", "Scan document & recognize text");
   await expect(
     page.getByRole("heading", { name: "From paper to possibility" }),
