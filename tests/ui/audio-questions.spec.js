@@ -61,6 +61,39 @@ async function openAudio(page) {
     .setInputFiles("tests/fixtures/speech.wav");
 }
 
+async function waitForSavedAudio(page) {
+  await expect(page.locator(".note-prose audio")).toHaveCount(1);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          new Promise((resolve, reject) => {
+            const request = indexedDB.open("notes-for-windows", 1);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+              const database = request.result;
+              const read = database
+                .transaction("library")
+                .objectStore("library")
+                .get("data");
+              read.onerror = () => {
+                database.close();
+                reject(read.error);
+              };
+              read.onsuccess = () => {
+                const note = read.result?.notes.find(
+                  (item) => item.title === "Audio QA fixture",
+                );
+                database.close();
+                resolve((note?.content.match(/<audio\b/g) || []).length === 1);
+              };
+            };
+          }),
+      ),
+    )
+    .toBe(true);
+}
+
 test("audio questions save answers with quotes and reuse the saved transcript", async ({
   page,
 }) => {
@@ -81,7 +114,7 @@ test("audio questions save answers with quotes and reuse the saved transcript", 
     "Possible answer: Priya",
   );
   await expect(page.locator(".note-prose audio")).toHaveCount(1);
-  await page.getByText("All changes saved", { exact: true }).waitFor();
+  await waitForSavedAudio(page);
   await page.reload();
   await expect(page.getByLabel("Note title")).toHaveValue("Audio QA fixture");
   await page.getByRole("button", { name: "Add to note", exact: true }).click();
@@ -124,7 +157,7 @@ test("saved clips gain transcripts without duplicating audio, and question work 
     .getByRole("button", { name: "Add to note", exact: true })
     .last()
     .click();
-  await page.getByText("All changes saved", { exact: true }).waitFor();
+  await waitForSavedAudio(page);
   await page.reload();
   await expect(page.getByLabel("Note title")).toHaveValue("Audio QA fixture");
   await page.getByRole("button", { name: "Add to note", exact: true }).click();

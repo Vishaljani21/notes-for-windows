@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — 2026-10-15
+
+- Made saved-audio checks wait for the imported clip to finish saving before reloading, so clean Windows release builds verify persistence reliably.
+
 ## 1.1.0 — 2026-10-15
 
 - Docked note tags above the save-status footer so they remain visible while reading or editing long notes.
