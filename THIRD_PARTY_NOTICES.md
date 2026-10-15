@@ -9,6 +9,9 @@ Where an npm package omits license files, checked-in upstream texts or license h
 | Package | Version | License | Upstream notices |
 | --- | --- | --- | --- |
 | @babel/runtime | 7.29.10 | MIT | [LICENSE](licenses/_babel_runtime-7.29.10/LICENSE) |
+| @floating-ui/core | 1.8.0 | MIT | [LICENSE](licenses/_floating-ui_core-1.8.0/LICENSE) |
+| @floating-ui/dom | 1.8.0 | MIT | [LICENSE](licenses/_floating-ui_dom-1.8.0/LICENSE) |
+| @floating-ui/utils | 0.2.12 | MIT | [LICENSE](licenses/_floating-ui_utils-0.2.12/LICENSE) |
 | @fontsource/atkinson-hyperlegible | 5.3.0 | OFL-1.1 | [LICENSE](licenses/_fontsource_atkinson-hyperlegible-5.3.0/LICENSE) |
 | @fontsource/barlow | 5.3.0 | OFL-1.1 | [LICENSE](licenses/_fontsource_barlow-5.3.0/LICENSE) |
 | @fontsource/bitter | 5.3.0 | OFL-1.1 | [LICENSE](licenses/_fontsource_bitter-5.3.0/LICENSE) |
