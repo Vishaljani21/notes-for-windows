@@ -24,7 +24,7 @@ Updates are installed manually from Releases. Back up your notebook from Setting
 - **Write and format:** rich text, headings, emphasis, highlights, quotes, code blocks, checklists, lists, tables, collapsible sections, undo/redo, and spell checking.
 - **Keep things organized:** folders and subfolders, drag notes into folders, pins, tags, tag-based Smart Folders, search, and links between notes by typing `>>`.
 - **Capture more:** images, file attachments, and English text recognition from imported images or camera photos.
-- **Remember what matters:** note reminders, date/time presets, Windows notifications, click-to-open, overdue delivery on reopening, and system tray support.
+- **Remember what matters:** note reminders, date/time presets, persistent Notes popup alerts, click-to-open, overdue delivery on reopening, and system tray support.
 - **Work with your words:** a calculation dialog and a local extractive summary that selects sentences from the note.
 - **Keep control of your data:** automatic local saving, Recently Deleted with restore, JSON notebook backups and restores, plain text/HTML note export, and print-to-PDF through Windows.
 - **Lock private content:** password-encrypted note content, tags, and attachments. Titles, folder membership, and timestamps remain visible.
@@ -39,9 +39,11 @@ Screenshots show the app's included fictional sample notes.
 
 ## Reminders
 
-Choose the bell button to set a note reminder, then select a date/time or a preset. Click its reminder badge to change or remove it. Windows notifications open the note when clicked. Deleted notes do not deliver reminders; restored notes keep their reminder settings. Duplicate notes start without a reminder.
+Choose the bell button to set a note reminder, then select a date/time or a preset, including **In 1 minute**. Click its reminder badge to change or remove it. A due reminder opens a Notes popup on your current screen and stays until you choose **Open note** or **Dismiss**. Deleted notes do not deliver reminders; restored notes keep their reminder settings. Duplicate notes start without a reminder.
 
-**Settings → Reminders → Keep reminders active in the system tray** is enabled by default. Closing the window saves and hides it; use **Quit Notes** from the tray to exit. Notes does not start automatically with Windows. Open it after signing in; reminders missed while it was closed appear when it opens again. Windows notification settings and Do Not Disturb can affect whether a notification is shown. The browser preview provides in-app reminders only while its tab is open.
+Use **Settings → Reminders → Test reminder alert** to check the actual popup. For a missed reminder previously marked delivered, open its bell dialog and choose **Show reminder again**. Delivery is acknowledged after the Notes alert appears. If both the popup and Windows notification fallback fail, the reminder remains pending and retries after a delay; a visible error lets you review it.
+
+**Settings → Reminders → Keep reminders active in the system tray** is enabled by default. Closing the window saves and hides it; use **Quit Notes** from the tray to exit. Notes does not start automatically with Windows. Open it after signing in; reminders missed while it was closed appear when it opens again. Notes popup alerts work independently of Windows toast-banner settings. The browser preview provides in-app reminders only while its tab is open.
 
 ## Data and privacy
 

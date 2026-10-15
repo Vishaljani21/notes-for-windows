@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("desktop", {
   save: (data) => ipcRenderer.invoke("notes:save", data),
   exportFile: (name, text) => ipcRenderer.invoke("notes:export", name, text),
   openExternal: (url) => ipcRenderer.invoke("notes:external", url),
+  testReminder: () => ipcRenderer.invoke("notes:test-reminder"),
+  retryReminder: (noteId) => ipcRenderer.invoke("notes:retry-reminder", noteId),
   minimize: () => ipcRenderer.send("window:minimize"),
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
@@ -12,6 +14,11 @@ contextBridge.exposeInMainWorld("desktop", {
     const listener = (_, reminder) => callback(reminder);
     ipcRenderer.on("notes:reminder", listener);
     return () => ipcRenderer.removeListener("notes:reminder", listener);
+  },
+  onReminderError: (callback) => {
+    const listener = (_, error) => callback(error);
+    ipcRenderer.on("notes:reminder-error", listener);
+    return () => ipcRenderer.removeListener("notes:reminder-error", listener);
   },
   onOpenNote: (callback) => {
     const listener = (_, noteId) => callback(noteId);

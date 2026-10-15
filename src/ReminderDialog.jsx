@@ -13,6 +13,8 @@ export default function ReminderDialog({
   note,
   onSave,
   onClear,
+  onRetry,
+  deliveryError = "",
   close,
   remindersInTray = false,
   desktop = typeof window !== "undefined" && Boolean(window.desktop),
@@ -24,6 +26,8 @@ export default function ReminderDialog({
   const [preset, setPreset] = useState(reminder.reminderAt ? "custom" : "hour");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [feedback, setFeedback] = useState("");
   const inputId = useId();
   const helpId = useId();
   const errorId = useId();
@@ -37,7 +41,7 @@ export default function ReminderDialog({
 
   async function submit(event) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || retrying) return;
     const reminderAt = parseReminderInput(value);
     const validation = validateReminderTime(reminderAt);
     if (validation) return setError(validation);
@@ -54,7 +58,7 @@ export default function ReminderDialog({
   }
 
   async function remove() {
-    if (busy) return;
+    if (busy || retrying) return;
     setBusy(true);
     setError("");
     try {
@@ -64,6 +68,21 @@ export default function ReminderDialog({
       setError(err?.message || "The reminder could not be removed. Try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function retry() {
+    if (busy || retrying || !onRetry) return;
+    setRetrying(true);
+    setError("");
+    setFeedback("");
+    try {
+      await onRetry();
+      setFeedback("Reminder queued again. It is marked delivered only after an alert appears.");
+    } catch (err) {
+      setError(err?.message || "The reminder could not be shown. Try again.");
+    } finally {
+      setRetrying(false);
     }
   }
 
@@ -85,6 +104,7 @@ export default function ReminderDialog({
         aria-label="Quick reminder times"
       >
         {[
+          ["minute", "In 1 minute"],
           ["hour", "In 1 hour"],
           ["tomorrow", "Tomorrow, 9 AM"],
           ["week", "In a week, 9 AM"],
@@ -94,7 +114,7 @@ export default function ReminderDialog({
             type="button"
             className={`button ${preset === id ? "primary" : ""}`}
             aria-pressed={preset === id}
-            disabled={busy}
+            disabled={busy || retrying}
             onClick={() => choosePreset(id)}
           >
             {label}
@@ -111,7 +131,7 @@ export default function ReminderDialog({
           max="2099-12-31T23:59"
           step="60"
           required
-          disabled={busy}
+          disabled={busy || retrying}
           aria-invalid={Boolean(error)}
           aria-describedby={`${helpId}${error ? ` ${errorId}` : ""}`}
           onChange={(event) => {
@@ -133,33 +153,43 @@ export default function ReminderDialog({
               : `Currently set for ${formatReminder(reminder.reminderAt)}.`}
         </p>
       )}
+      {desktop && onRetry && reminder.reminderAt && reminder.reminderAt <= Date.now() && (
+        <div className="reminder-retry">
+          <button type="button" className="button" onClick={retry} disabled={busy || retrying}>
+            <Bell size={16} /> {retrying ? "Showing reminder…" : "Show reminder again"}
+          </button>
+          <p className="helper">Use this if an earlier reminder was missed.</p>
+        </div>
+      )}
       <p className="dialog-description reminder-help">
         {desktop
           ? remindersInTray
-            ? "Notes keeps running in the system tray when you close its window, so reminders can still arrive. After you quit Notes, overdue reminders appear when you open it again."
-            : "Windows notifications arrive while Notes is running. To receive them after closing the window, turn on background reminders in Settings. After you quit Notes, overdue reminders appear when you open it again."
-          : "Keep this tab open for in-app reminders. The installed Windows app also supports desktop notifications."}
+            ? "Notes keeps running in the system tray when you close its window, so reminder popups can still appear. After you quit Notes, overdue reminders appear when you open it again."
+            : "Notes shows reminder popups while it is running. To receive them after closing the window, turn on background reminders in Settings. After you quit Notes, overdue reminders appear when you open it again."
+          : "Keep this tab open for in-app reminders. The installed Windows app also supports reminder popups."}
       </p>
       {error && (
         <p id={errorId} className="form-error" role="alert">
           {error}
         </p>
       )}
+      {deliveryError && <p className="form-error" role="alert">{deliveryError}</p>}
+      {feedback && !deliveryError && <p className="helper" role="status">{feedback}</p>}
       <div className="dialog-actions">
         {reminder.reminderAt && (
           <button
             type="button"
             className="button danger"
             onClick={remove}
-            disabled={busy}
+            disabled={busy || retrying}
           >
             <BellOff size={16} /> Remove reminder
           </button>
         )}
-        <button type="button" className="button" onClick={close} disabled={busy}>
+        <button type="button" className="button" onClick={close} disabled={busy || retrying}>
           Cancel
         </button>
-        <button type="submit" className="button primary" disabled={busy}>
+        <button type="submit" className="button primary" disabled={busy || retrying}>
           <Bell size={16} /> {busy ? "Saving…" : "Save reminder"}
         </button>
       </div>

@@ -245,6 +245,7 @@ export default function App() {
     [editor, setEditor] = useState(null),
     [selectionTick, setSelectionTick] = useState(0);
   const [find, setFind] = useState("");
+  const [reminderError, setReminderError] = useState(null);
   useEffect(() => {
     const compact = matchMedia("(max-width: 820px)");
     const hideCompactNavigation = () => {
@@ -322,17 +323,22 @@ export default function App() {
         !note ||
         note.deletedAt ||
         note.reminderAt !== reminderAt ||
-        note.reminderNotifiedAt >= reminderAt
+        !isReminderTimestamp(deliveredAt) ||
+        deliveredAt < reminderAt ||
+        note.reminderNotifiedAt >= deliveredAt
       )
         return;
       setLibrary((library) => ({
         ...library,
         notes: library.notes.map((item) =>
-          item.id === noteId && item.reminderAt === reminderAt
+          item.id === noteId &&
+          item.reminderAt === reminderAt &&
+          !(item.reminderNotifiedAt >= deliveredAt)
             ? { ...item, reminderNotifiedAt: deliveredAt }
             : item,
         ),
       }));
+      setReminderError((error) => (error?.noteId === noteId ? null : error));
       toast(
         note.locked
           ? "Reminder for a locked note"
@@ -343,6 +349,14 @@ export default function App() {
   );
   useEffect(() => {
     const stopReminder = window.desktop?.onReminder?.(receiveReminder);
+    const stopError = window.desktop?.onReminderError?.((error) => {
+      setReminderError({
+        noteId: error?.noteId,
+        message:
+          error?.message ||
+          "Notes could not show a reminder. Open reminder settings and try the test alert.",
+      });
+    });
     const stopOpen = window.desktop?.onOpenNote?.((noteId) => {
       if (
         !latest.current.library.notes.some(
@@ -358,6 +372,7 @@ export default function App() {
     });
     return () => {
       stopReminder?.();
+      stopError?.();
       stopOpen?.();
     };
   }, [receiveReminder]);
@@ -645,6 +660,19 @@ export default function App() {
     setTagFilter("");
     setSelected(id);
     setModal(null);
+  }
+  function reviewReminderError() {
+    const note = notes.find(
+      (item) =>
+        item.id === reminderError?.noteId && !item.deletedAt && !item.locked,
+    );
+    if (note) {
+      setScope("all");
+      setQuery("");
+      setTagFilter("");
+      setSelected(note.id);
+      setModal({ type: "reminder" });
+    } else setModal({ type: "settings" });
   }
   function action(callback) {
     callback();
@@ -1854,6 +1882,22 @@ export default function App() {
         }}
       />
       {menu && <div className="menu-scrim" onClick={() => setMenu(null)} />}
+      {reminderError && (
+        <div className="reminder-delivery-error" role="alert">
+          <Bell size={19} />
+          <span>{reminderError.message}</span>
+          <button className="button" onClick={reviewReminderError}>
+            Review reminder
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Dismiss reminder error"
+            onClick={() => setReminderError(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {toastMessage && (
         <div className="toast" role="status">
           <Check size={16} />
@@ -1889,6 +1933,8 @@ export default function App() {
             exportBackup={exportBackup}
             backupInput={backupInput}
             openNote={openNote}
+            reminderError={reminderError}
+            clearReminderError={() => setReminderError(null)}
           />
         </Modal>
       )}
@@ -1914,6 +1960,8 @@ function DialogContent({
   exportBackup,
   backupInput,
   openNote,
+  reminderError,
+  clearReminderError,
 }) {
   const [value, setValue] = useState(
       modal.type === "folder"
@@ -1930,13 +1978,62 @@ function DialogContent({
     [smart, setSmart] = useState(!!modal.folder?.smartTag),
     [smartTag, setSmartTag] = useState(modal.folder?.smartTag || ""),
     [result, setResult] = useState("");
+  const [reminderTest, setReminderTest] = useState({ status: "idle", message: "" });
   const settings = library.settings;
+  async function testReminderAlert() {
+    if (reminderTest.status === "pending") return;
+    setReminderTest({ status: "pending", message: "Waiting for the test alert…" });
+    try {
+      const response = await window.desktop.testReminder();
+      if (!response?.ok)
+        throw new Error(
+          response?.error || "The test alert could not be shown. Please try again.",
+        );
+      clearReminderError();
+      setReminderTest({
+        status: "success",
+        message:
+          response.channel === "windows"
+            ? "The test alert was sent through Windows. If you did not see it, check Windows Settings → System → Notifications and Do not disturb."
+            : "The test reminder opened in a Notes popup. It stays visible until you dismiss it or open the note.",
+      });
+    } catch (error) {
+      setReminderTest({
+        status: "error",
+        message:
+          error?.message || "The test alert could not be shown. Please try again.",
+      });
+    }
+  }
+  async function retryCurrentReminder() {
+    const previousDelivery = current.reminderNotifiedAt;
+    const response = await window.desktop.retryReminder(current.id);
+    if (!response?.ok)
+      throw new Error(
+        response?.error || "The reminder could not be shown. Try again.",
+      );
+    setLibrary((library) => ({
+      ...library,
+      notes: library.notes.map((note) =>
+        note.id === current.id &&
+        note.reminderAt === current.reminderAt &&
+        note.reminderNotifiedAt === previousDelivery
+          ? { ...note, reminderNotifiedAt: null }
+          : note,
+      ),
+    }));
+    clearReminderError();
+  }
   if (modal.type === "reminder")
     return (
       <ReminderDialog
         note={current}
         remindersInTray={settings.remindersInTray}
         close={close}
+        deliveryError={
+          reminderError?.noteId === current?.id ? reminderError.message : ""
+        }
+        onRetry={window.desktop?.retryReminder ? retryCurrentReminder : undefined}
         onSave={(patch) => {
           updateNote(current.id, patch);
           toast("Reminder saved.");
@@ -2603,7 +2700,7 @@ function DialogContent({
         {heading(
           Settings,
           "Make a little space your own",
-          "Notes for Windows · Version 1.1.4",
+          "Notes for Windows · Version 1.1.5",
         )}
         <div className="settings-section">
           <h3>Appearance</h3>
@@ -2709,9 +2806,19 @@ function DialogContent({
           </label>
           <p className="helper">
             {window.desktop
-              ? "Notes must be running for Windows notifications. Open it after starting Windows; reminders missed while it was closed appear when it opens again."
+              ? "Notes shows a reminder popup while it is running, including in the system tray. Open Notes after starting Windows; reminders missed while it was closed appear when it opens again."
               : "In-app reminders work while this tab stays open. Install the Windows app for notifications and system tray support."}
           </p>
+          {window.desktop && (
+            <>
+              <button className="button" onClick={testReminderAlert} disabled={reminderTest.status === "pending" || !window.desktop.testReminder}>
+                <Bell size={16} /> {reminderTest.status === "pending" ? "Showing test alert…" : "Test reminder alert"}
+              </button>
+              <p className="helper">Notes reminder popups stay visible until you dismiss them or open the note.</p>
+              {reminderTest.message && <p className={reminderTest.status === "error" ? "form-error" : "helper"} role={reminderTest.status === "error" ? "alert" : "status"}>{reminderTest.message}</p>}
+              {reminderError && <p className="form-error" role="alert">{reminderError.message}</p>}
+            </>
+          )}
         </div>
         <div className="settings-section">
           <h3>Your notes, your device</h3>

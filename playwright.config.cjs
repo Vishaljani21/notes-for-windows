@@ -1,6 +1,7 @@
 const { defineConfig } = require("@playwright/test");
 module.exports = defineConfig({
   testDir: "./tests/ui",
+  outputDir: "./test-results/ui",
   timeout: 45000,
   retries: 0,
   workers: 1,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.5 — 2026-10-16
+
+- Fixed reminders being marked delivered before an alert was displayed.
+- Due reminders now open a persistent Notes popup with Open note and Dismiss actions, including while Notes runs in the tray. This avoids relying on Windows toast banners that can be accepted but hidden.
+- Failed alert attempts remain pending and retry with a delay. Failed receipt writes do not repeat an alert already shown in the same session.
+- Added Show reminder again for missed alerts, a Test reminder alert button in Settings, and an In 1 minute preset.
+- Kept reminder errors visible with a way to review the affected note.
+
 ## 1.1.4 — 2026-10-16
 
 - Made the native taskbar icon check allow Windows diagnostic startup and first-time C# compilation on clean release runners, with progress diagnostics for failures.

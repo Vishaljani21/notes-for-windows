@@ -60,6 +60,8 @@ test("new reminders require a real future time within the scheduler range", () =
   assert.equal(reminderPreset("other", now), null);
   assert.equal(reminderPreset("hour", Infinity), null);
   assert.equal(reminderPreset("hour", MAX_REMINDER_TIME - 1), null);
+  assert.equal(reminderPreset("minute", now + 1234), now + 120000);
+  assert.equal(reminderPreset("minute", MAX_REMINDER_TIME - 1), null);
 });
 
 test("local input round-trips, rejects calendar overflow, and formats valid dates", () => {

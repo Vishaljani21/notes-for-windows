@@ -22,6 +22,26 @@ function exited(child, timeout = 15000) {
   });
 }
 
+async function waitFor(check, message, timeout = 15000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    const result = await check();
+    if (result) return result;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(message);
+}
+
+async function alertPage(instance) {
+  return waitFor(async () => {
+    for (const page of instance.windows()) {
+      if (page.isClosed()) continue;
+      if (await page.getByRole("button", { name: /^Open note(s)?$/i }).count())
+        return page;
+    }
+  }, "The reminder popup did not render");
+}
+
 async function main() {
   const project = path.resolve(__dirname, "..");
   const { seedLibrary } = await import(
@@ -56,17 +76,14 @@ async function main() {
     await traySetting.waitFor();
     assert.equal(await traySetting.isChecked(), true);
     await page.getByRole("button", { name: "Done", exact: true }).click();
-    // Exercise Electron's real Notification class and event handlers without
-    // showing a test notification or bringing a hidden test window forward.
-    await instance.evaluate(({ Notification, BrowserWindow }) => {
+    // Keep the fixture's main window hidden while exercising the real reminder
+    // popup. Windows toast calls are not a substitute for a visible app alert.
+    await instance.evaluate(({ BrowserWindow }) => {
       globalThis.__reminderTest = {
-        notifications: [], opened: 0, focused: 0, hidden: 0,
-      };
-      Notification.isSupported = () => true;
-      Notification.prototype.show = function () {
-        globalThis.__reminderTest.notifications.push(this);
+        opened: 0, focused: 0, hidden: 0,
       };
       const window = BrowserWindow.getAllWindows()[0];
+      globalThis.__reminderTest.mainWindowId = window.id;
       window.show = () => globalThis.__reminderTest.opened++;
       window.focus = () => globalThis.__reminderTest.focused++;
       const hide = window.hide.bind(window);
@@ -88,21 +105,24 @@ async function main() {
       await window.desktop.save(data);
       return { noteId: data.notes[0].id, reminderAt: data.notes[0].reminderAt };
     });
+    const reminderPopup = await alertPage(instance);
+    assert.match(await reminderPopup.locator("body").innerText(), /A little room for big ideas/);
+    assert.equal(await instance.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows().some((window) =>
+        window.webContents.getURL().includes("reminder-alert") && window.isVisible()),
+    ), true);
     await page.waitForFunction(() => window.__reminderEvents.length === 1);
     const delivered = await page.evaluate(() => window.__reminderEvents[0]);
     assert.equal(delivered.noteId, scheduled.noteId);
     assert.equal(delivered.reminderAt, scheduled.reminderAt);
     assert.ok(delivered.deliveredAt >= scheduled.reminderAt);
-    const receipts = JSON.parse(
-      await fs.readFile(path.join(dir, "reminder-deliveries.json"), "utf8"),
-    );
+    const receipts = await waitFor(async () => {
+      try {
+        const data = JSON.parse(await fs.readFile(path.join(dir, "reminder-deliveries.json"), "utf8"));
+        return data.deliveries.some((entry) => entry.noteId === scheduled.noteId) && data;
+      } catch { return null; }
+    }, "Confirmed reminder receipt was not saved");
     assert.deepEqual(receipts.deliveries[0], delivered);
-    const notification = await instance.evaluate(() => {
-      const entry = globalThis.__reminderTest.notifications[0];
-      return { title: entry.title, body: entry.body };
-    });
-    assert.equal(notification.title, library.notes[0].title);
-    assert.match(notification.body, /Click to open/);
     await page.locator(".note-card").filter({
       hasText: "A weekend in Copenhagen",
     }).click();
@@ -110,9 +130,7 @@ async function main() {
       await page.getByLabel("Note title").inputValue(),
       "A weekend in Copenhagen",
     );
-    await instance.evaluate(() =>
-      globalThis.__reminderTest.notifications[0].emit("click"),
-    );
+    await reminderPopup.getByRole("button", { name: "Open note", exact: true }).click();
     await page.waitForFunction(() => window.__openedNotes.length === 1);
     assert.equal(
       await page.evaluate(() => window.__openedNotes[0]),
@@ -129,7 +147,30 @@ async function main() {
       })),
       { opened: 1, focused: 1 },
     );
-    console.log("Native notification, durable receipt, and click-to-open routing: PASS");
+    console.log("Visible Notes reminder popup, confirmed receipt, and Open note routing: PASS");
+
+    const replay = await page.evaluate((id) => window.desktop.retryReminder(id), scheduled.noteId);
+    assert.equal(replay.ok, true);
+    const repeatedPopup = await alertPage(instance);
+    await page.waitForFunction(() => window.__reminderEvents.length === 2);
+    await repeatedPopup.getByRole("button", { name: "Dismiss", exact: true }).click();
+    console.log("Previously delivered reminder can be shown again and dismissed: PASS");
+
+    const testResult = await page.evaluate(() => window.desktop.testReminder());
+    assert.equal(testResult.ok, true);
+    assert.equal(testResult.channel, "app");
+    const testPopup = await alertPage(instance);
+    assert.match(await testPopup.locator("body").innerText(), /reminder test/i);
+    await instance.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows().find((window) =>
+        window.webContents.getURL().includes("reminder-alert"))?.close();
+    });
+    const reopened = await page.evaluate(() => window.desktop.testReminder());
+    assert.equal(reopened.ok, true);
+    const reopenedPopup = await alertPage(instance);
+    assert.equal(await reopenedPopup.getByRole("heading", { name: "Notes reminder test", exact: true }).count(), 1);
+    await reopenedPopup.getByRole("button", { name: "Dismiss", exact: true }).click();
+    console.log("Settings test alert and closing without reappearing stale alerts: PASS");
 
     await page.getByLabel("Note title").fill("Saved before hiding in tray");
     await page.getByRole("button", { name: "Close app", exact: true }).click();
@@ -149,7 +190,7 @@ async function main() {
     assert.equal(instance.process().exitCode, null);
     assert.equal(
       await instance.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0].isVisible(),
+        BrowserWindow.fromId(globalThis.__reminderTest.mainWindowId).isVisible(),
       ),
       false,
     );

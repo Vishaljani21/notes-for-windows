@@ -6,6 +6,7 @@ const validTime = (value) =>
   Number.isSafeInteger(value) && value > 0 && value <= MAX_REMINDER_DATE;
 const validId = (id) =>
   typeof id === "string" && /^[a-z0-9_-]{1,100}$/i.test(id);
+const RETRY_DELAY = 60000;
 
 // Keep delivery receipts separate from the library so a renderer save cannot
 // overwrite them. Receipts contain identifiers and dates, never note contents.
@@ -19,6 +20,9 @@ function createReminderScheduler({
 }) {
   let notes = new Map();
   let delivered = new Map();
+  let retryAfter = new Map();
+  let receiptsDirty = false;
+  let receiptRetryAt;
   let timer;
   let stopped = false;
   let queue = Promise.resolve();
@@ -33,7 +37,7 @@ function createReminderScheduler({
       if (data.version !== 1 || !Array.isArray(data.deliveries)) return;
       for (const receipt of data.deliveries.slice(0, 10000)) {
         if (
-          validId(receipt.noteId) &&
+          validId(receipt?.noteId) &&
           validTime(receipt.reminderAt) &&
           Number.isSafeInteger(receipt.deliveredAt) &&
           receipt.deliveredAt >= receipt.reminderAt
@@ -60,13 +64,39 @@ function createReminderScheduler({
     await fs.rename(deliveryPath + ".tmp", deliveryPath);
   }
 
-  function schedule(retry = false) {
+  async function commitReceipts() {
+    try {
+      await persist();
+      receiptsDirty = false;
+      receiptRetryAt = undefined;
+      return true;
+    } catch (error) {
+      // A confirmed notification must not be shown again merely because its
+      // receipt could not be written. Retain it in memory and retry the write.
+      receiptsDirty = true;
+      receiptRetryAt = now() + RETRY_DELAY;
+      onError(error);
+      return false;
+    }
+  }
+
+  function schedule() {
     if (timer !== undefined) clearTimer(timer);
     timer = undefined;
     if (stopped) return;
     let earliest = Infinity;
-    for (const note of notes.values())
-      if (!receiptFor(note)) earliest = Math.min(earliest, note.reminderAt);
+    for (const note of notes.values()) {
+      if (receiptFor(note)) continue;
+      const retry = retryAfter.get(note.id);
+      earliest = Math.min(
+        earliest,
+        Math.max(
+          note.reminderAt,
+          retry?.reminderAt === note.reminderAt ? retry.at : 0,
+        ),
+      );
+    }
+    if (receiptsDirty) earliest = Math.min(earliest, receiptRetryAt);
     if (!Number.isFinite(earliest)) return;
     // Recheck at least once a minute: sleeping PCs and clock changes must not
     // leave a reminder waiting for a stale long timeout.
@@ -75,7 +105,7 @@ function createReminderScheduler({
         timer = undefined;
         checkDue().catch(onError);
       },
-      retry ? 60000 : Math.min(60000, Math.max(0, earliest - now())),
+      Math.min(60000, Math.max(0, earliest - now())),
     );
     timer?.unref?.();
   }
@@ -83,32 +113,34 @@ function createReminderScheduler({
   function checkDue() {
     return enqueue(async () => {
       if (stopped) return;
-      let retry = false;
+      if (receiptsDirty && receiptRetryAt <= now()) await commitReceipts();
       for (const note of notes.values()) {
         if (note.reminderAt > now() || receiptFor(note)) continue;
+        const retry = retryAfter.get(note.id);
+        if (retry?.reminderAt === note.reminderAt && retry.at > now()) continue;
         const receipt = {
           noteId: note.id,
           reminderAt: note.reminderAt,
           deliveredAt: Math.max(note.reminderAt, now()),
         };
-        delivered.set(note.id, receipt);
         try {
-          // Commit before showing the notification to avoid repeated alerts
-          // when the app closes before its renderer has saved the receipt.
-          await persist();
-        } catch (error) {
-          delivered.delete(note.id);
-          onError(error);
-          retry = true;
-          continue;
-        }
-        try {
+          // notify resolves only after Windows confirms display, or after a
+          // visible app-owned fallback. An attempted alert is not a delivery.
           await notify(note, receipt);
         } catch (error) {
           onError(error);
+          retryAfter.set(note.id, {
+            reminderAt: note.reminderAt,
+            at: now() + RETRY_DELAY,
+          });
+          continue;
         }
+        delivered.set(note.id, receipt);
+        retryAfter.delete(note.id);
+        receiptsDirty = true;
+        await commitReceipts();
       }
-      schedule(retry);
+      schedule();
     });
   }
 
@@ -128,16 +160,6 @@ function createReminderScheduler({
             locked: note.locked,
             reminderAt: note.reminderAt,
           });
-          if (
-            Number.isSafeInteger(note.reminderNotifiedAt) &&
-            note.reminderNotifiedAt >= note.reminderAt &&
-            !receiptFor(note)
-          )
-            delivered.set(note.id, {
-              noteId: note.id,
-              reminderAt: note.reminderAt,
-              deliveredAt: note.reminderNotifiedAt,
-            });
         }
       }
       notes = next;
@@ -148,17 +170,46 @@ function createReminderScheduler({
           pruned = true;
         }
       }
-      if (pruned) await persist().catch(onError);
+      for (const [id, retry] of retryAfter)
+        if (notes.get(id)?.reminderAt !== retry.reminderAt) retryAfter.delete(id);
+      if (pruned) {
+        receiptsDirty = true;
+        await commitReceipts();
+      }
       schedule();
       return {
         ...library,
         notes: library.notes.map((note) => {
           const receipt = receiptFor(note);
-          return receipt
-            ? { ...note, reminderNotifiedAt: receipt.deliveredAt }
-            : note;
+          // Renderer state can be stale, including the old implementation's
+          // premature delivery markers. Only native receipts acknowledge it.
+          return { ...note, reminderNotifiedAt: receipt?.deliveredAt ?? null };
         }),
       };
+    });
+  }
+
+  async function retryReminder(noteId) {
+    await ready;
+    return enqueue(async () => {
+      const note = notes.get(noteId);
+      if (stopped || !validId(noteId) || !note || note.reminderAt > now())
+        return false;
+      const previousReceipt = delivered.get(noteId);
+      const previousRetry = retryAfter.get(noteId);
+      delivered.delete(noteId);
+      retryAfter.delete(noteId);
+      receiptsDirty = true;
+      // Make the explicit reset durable before permitting a second alert for
+      // the same scheduled time. A failed reset leaves the old receipt intact.
+      if (!(await commitReceipts())) {
+        if (previousReceipt) delivered.set(noteId, previousReceipt);
+        if (previousRetry) retryAfter.set(noteId, previousRetry);
+        schedule();
+        return false;
+      }
+      schedule();
+      return true;
     });
   }
 
@@ -166,6 +217,7 @@ function createReminderScheduler({
     ready,
     replaceLibrary,
     checkDue,
+    retryReminder,
     flush: () => queue,
     stop() {
       stopped = true;

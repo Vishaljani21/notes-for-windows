@@ -1913,6 +1913,36 @@ textarea:focus {
   font-size: calc(13px * var(--ui-scale));
   line-height: 1.6;
 }
+.reminder-retry {
+  margin: 0 0 16px;
+}
+.reminder-retry .helper {
+  margin: 7px 0 0;
+}
+.reminder-delivery-error {
+  position: fixed;
+  z-index: 75;
+  bottom: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(700px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  font-size: calc(13px * var(--ui-scale));
+}
+.reminder-delivery-error > span {
+  flex: 1;
+  min-width: 160px;
+  overflow-wrap: anywhere;
+}
 .scan-text {
   resize: vertical;
   width: 100%;

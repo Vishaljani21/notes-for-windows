@@ -69,8 +69,9 @@ export function parseReminderInput(value) {
 export function reminderPreset(preset, now = Date.now()) {
   if (!isReminderTimestamp(now)) return null;
   let timestamp;
-  if (preset === "hour") {
-    timestamp = Math.ceil((now + 60 * 60 * 1000) / 60000) * 60000;
+  if (preset === "minute" || preset === "hour") {
+    const interval = preset === "minute" ? 60000 : 60 * 60 * 1000;
+    timestamp = Math.ceil((now + interval) / 60000) * 60000;
   } else if (preset === "tomorrow" || preset === "week") {
     const date = new Date(now);
     date.setDate(date.getDate() + (preset === "tomorrow" ? 1 : 7));

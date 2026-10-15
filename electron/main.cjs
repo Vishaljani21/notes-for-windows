@@ -16,6 +16,8 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createReminderScheduler } = require("./reminders.cjs");
+const { createReminderAlerts } = require("./reminder-alert.cjs");
+const { createReminderDelivery } = require("./reminder-delivery.cjs");
 const appIconPath =
   process.platform === "win32" && app.isPackaged
     ? path.join(process.resourcesPath, "icons/notes-original.ico")
@@ -47,7 +49,8 @@ let closingAllowed = false;
 let quitting = false;
 let tray;
 let reminderScheduler;
-const activeNotifications = new Set();
+let reminderAlerts;
+let reminderDelivery;
 let pendingWrite = Promise.resolve();
 const quitRequested = process.argv.includes("--quit");
 const ownsInstance = app.requestSingleInstanceLock();
@@ -62,6 +65,11 @@ function showWindow() {
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+}
+function openReminderNote(noteId) {
+  showWindow();
+  if (noteId && mainWindow && !mainWindow.isDestroyed())
+    mainWindow.webContents.send("notes:open-note", noteId);
 }
 function updateTray(settings) {
   if (settings?.remindersInTray !== true) {
@@ -93,6 +101,28 @@ const dataPath = () => path.join(app.getPath("userData"), "notes-data.json");
 const trusted = (event) =>
   event.sender === mainWindow?.webContents &&
   event.senderFrame === mainWindow?.webContents.mainFrame;
+ipcMain.handle("notes:test-reminder", async (event) => {
+  if (!trusted(event)) throw new Error("Untrusted source");
+  try {
+    const result = await reminderDelivery.deliver(
+      { id: "notes-reminder-test", title: "Notes reminder test", reminderAt: Date.now() },
+      null,
+      { isTest: true },
+    );
+    return { ok: true, ...result };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+ipcMain.handle("notes:retry-reminder", async (event, noteId) => {
+  if (!trusted(event)) throw new Error("Untrusted source");
+  if (typeof noteId !== "string" || !/^[a-z0-9_-]{1,100}$/i.test(noteId))
+    return { ok: false, error: "Choose an existing reminder to show again." };
+  await pendingWrite.catch(() => {});
+  if (await reminderScheduler.retryReminder(noteId))
+    return { ok: true, reminderNotifiedAt: null };
+  return { ok: false, error: "This reminder could not be shown again. Check its saved time and try again." };
+});
 ipcMain.handle("notes:load", async (event) => {
   if (!trusted(event)) throw new Error("Untrusted source");
   let library;
@@ -189,37 +219,27 @@ for (const action of ["minimize", "maximize", "close"])
 app.whenReady().then(() => {
   if (!ownsInstance || quitRequested) return;
   app.setAppUserModelId("com.notesforwindows.desktop");
-  reminderScheduler = createReminderScheduler({
-    deliveryPath: path.join(app.getPath("userData"), "reminder-deliveries.json"),
-    notify: (note, receipt) => {
+  reminderAlerts = createReminderAlerts({
+    iconPath: appIconPath,
+    onOpen: openReminderNote,
+  });
+  reminderDelivery = createReminderDelivery({
+    Notification,
+    iconPath: appIconPath,
+    showAlert: (note, options) => reminderAlerts.show(note, options),
+    onOpen: openReminderNote,
+    onDelivered: (receipt) => {
       if (mainWindow && !mainWindow.isDestroyed())
         mainWindow.webContents.send("notes:reminder", receipt);
-      if (!Notification.isSupported()) return;
-      const notification = new Notification({
-        title: note.locked
-          ? "Locked note reminder"
-          : (typeof note.title === "string" && note.title
-              ? note.title
-              : "Untitled note"
-            ).slice(0, 120),
-        body: "Your note reminder is due. Click to open it.",
-        icon: appIconPath,
-        timeoutType: "never",
-      });
-      activeNotifications.add(notification);
-      notification.on("click", () => {
-        showWindow();
-        if (mainWindow && !mainWindow.isDestroyed())
-          mainWindow.webContents.send("notes:open-note", note.id);
-        activeNotifications.delete(notification);
-      });
-      notification.on("close", () => activeNotifications.delete(notification));
-      notification.on("failed", (_, error) => {
-        activeNotifications.delete(notification);
-        console.error("Windows could not display a reminder:", error);
-      });
-      notification.show();
     },
+    onError: (error) => {
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send("notes:reminder-error", error);
+    },
+  });
+  reminderScheduler = createReminderScheduler({
+    deliveryPath: path.join(app.getPath("userData"), "reminder-deliveries.json"),
+    notify: (note, receipt) => reminderDelivery.deliver(note, receipt),
   });
   const assets = path.resolve(__dirname, "../dist");
   protocol.handle("notes", (request) => {
@@ -358,6 +378,8 @@ app.on("before-quit", () => {
 });
 app.on("will-quit", () => {
   reminderScheduler?.stop();
+  reminderAlerts?.destroy();
+  reminderDelivery?.dispose();
   tray?.destroy();
 });
 app.on("window-all-closed", () => app.quit());
