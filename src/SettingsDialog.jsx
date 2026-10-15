@@ -178,7 +178,6 @@ export default function SettingsDialog({
             className="settings-panel"
             role="tabpanel"
             aria-labelledby="settings-tab-appearance"
-            tabIndex={0}
             hidden={active !== "appearance"}
           >
             <PanelHeading title="Appearance">
@@ -360,7 +359,6 @@ export default function SettingsDialog({
             className="settings-panel"
             role="tabpanel"
             aria-labelledby="settings-tab-fonts"
-            tabIndex={0}
             hidden={active !== "fonts"}
           >
             <div className="settings-panel-title-row">
@@ -426,7 +424,6 @@ export default function SettingsDialog({
             className="settings-panel"
             role="tabpanel"
             aria-labelledby="settings-tab-reminders"
-            tabIndex={0}
             hidden={active !== "reminders"}
           >
             <PanelHeading title="Reminders">
@@ -516,7 +513,6 @@ export default function SettingsDialog({
             className="settings-panel"
             role="tabpanel"
             aria-labelledby="settings-tab-data"
-            tabIndex={0}
             hidden={active !== "data"}
           >
             <PanelHeading title="Data & backup">

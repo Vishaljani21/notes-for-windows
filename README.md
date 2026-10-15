@@ -22,7 +22,7 @@ Updates are installed manually from Releases. Back up your notebook from Setting
 
 - **Make it comfortable:** light, dark, and system appearance; list and gallery views; adjustable interface and editor text sizes; font choices in Settings, including bundled fonts that work offline and Windows system fonts.
 - **Make it yours:** 18 normal and neon accent colors across selections, controls, and reminder popups. Choose **Settings → Appearance → Accent color**; the choice stays on your device.
-- **Write and format:** rich text, headings, emphasis, highlights, quotes, code blocks, checklists, lists, tables, collapsible sections, undo/redo, and spell checking.
+- **Write and format:** rich text, headings, emphasis, highlights, quotes, code blocks, checklists, lists, tables, horizontal dividers, collapsible sections, undo/redo, and spell checking. Add a full-width line from **Text style → Horizontal divider** or right-click inside a note and choose **Insert → Horizontal divider**.
 - **Keep things organized:** folders and subfolders, drag notes into folders, pins, tags, tag-based Smart Folders, search, and links between notes by typing `>>`.
 - **Work from a right-click:** note-card menus for pinning, moving, reminders, locking, duplication, and deletion; editor menus for paragraphs, headings, lists, formatting, tables, links, and clipboard actions. Keyboard users can press **Shift+F10**.
 - **Capture more:** images, file attachments, and English text recognition from imported images or camera photos.

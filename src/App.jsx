@@ -1567,6 +1567,12 @@ export default function App() {
                     Code block
                   </MenuItem>
                   <MenuItem
+                    icon={Minus}
+                    onClick={() => format("setHorizontalRule")}
+                  >
+                    Horizontal divider
+                  </MenuItem>
+                  <MenuItem
                     icon={ChevronRight}
                     onClick={() =>
                       action(() =>

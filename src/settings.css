@@ -3,6 +3,7 @@
   height: min(720px, calc(100dvh - 60px));
   overflow: hidden;
   border-radius: 16px;
+  box-shadow: none;
 }
 .settings-modal > .modal-close {
   top: 22px;
@@ -124,11 +125,6 @@
 }
 .settings-panel[hidden] {
   display: none;
-}
-.settings-panel:focus-visible {
-  outline: 2px solid var(--note-focus);
-  outline-offset: 5px;
-  border-radius: 4px;
 }
 .settings-panel-heading {
   margin-bottom: 25px;

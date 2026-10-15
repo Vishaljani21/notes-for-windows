@@ -41,9 +41,12 @@ import {
   Link2,
   Unlink,
   ChevronRight,
+  Plus,
+  Minus,
   X,
 } from "lucide-react";
 import ContextMenu from "./ContextMenu.jsx";
+import "./divider.css";
 
 export const cleanHTML = (html) =>
   DOMPurify.sanitize(html, {
@@ -468,6 +471,18 @@ export default function NoteEditor({
         ...(canEdit
           ? [
               { separator: true },
+              {
+                label: "Insert",
+                icon: Plus,
+                items: [
+                  {
+                    label: "Horizontal divider",
+                    icon: Minus,
+                    disabled: !editor.can().setHorizontalRule(),
+                    onSelect: runCommand("setHorizontalRule"),
+                  },
+                ],
+              },
               {
                 label: "Text style",
                 icon: Type,

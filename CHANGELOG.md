@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.9 — 2026-10-16
+
+- Removed the Settings window shadow while preserving its blurred backdrop.
+- Removed the oversized Settings content focus border; keyboard navigation goes directly to the controls with their own focus indicators.
+- Added full-width horizontal dividers through the Text style menu and the editor's right-click Insert menu, with undo/redo and automatic saving.
+
 ## 1.1.8 — 2026-10-16
 
 - Refined note cards with clearer titles, balanced metadata, quieter empty states, and consistent rounded surfaces.
