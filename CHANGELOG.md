@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.3 — 2026-10-16
+
+- Explicitly assigned the original Notes icon and relaunch identity to the running Windows taskbar button, in addition to Desktop and Start menu shortcuts.
+- Used the installed icon outside the application archive for native Windows icon and relaunch metadata.
+
 ## 1.1.2 — 2026-10-15
 
 - Removed audio recording, import, transcription, and audio questions from the toolbar and menus, along with their model workers and dependencies.

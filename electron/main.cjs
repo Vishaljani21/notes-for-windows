@@ -10,16 +10,20 @@ const {
   shell,
   Notification,
   Tray,
+  nativeImage,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createReminderScheduler } = require("./reminders.cjs");
-const appIconPath = path.join(
-  __dirname,
-  "../dist",
-  process.platform === "win32" ? "icon.ico" : "icon.png",
-);
+const appIconPath =
+  process.platform === "win32" && app.isPackaged
+    ? path.join(process.resourcesPath, "icons/notes-original.ico")
+    : path.join(
+        __dirname,
+        "../dist",
+        process.platform === "win32" ? "icon.ico" : "icon.png",
+      );
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "notes",
@@ -260,7 +264,7 @@ app.whenReady().then(() => {
     minWidth: 900,
     minHeight: 600,
     frame: false,
-    show: app.isPackaged || process.env.NOTES_TEST_HEADLESS !== "1",
+    show: false,
     backgroundColor: "#f3f2f0",
     title: "Notes for Windows",
     icon: appIconPath,
@@ -271,6 +275,24 @@ app.whenReady().then(() => {
       sandbox: true,
       webSecurity: true,
     },
+  });
+  if (process.platform === "win32") {
+    // The running taskbar button has its own relaunch metadata. Explicitly
+    // associate it with the installed Notes icon rather than Electron's defaults.
+    mainWindow.setAppDetails({
+      appId: "com.notesforwindows.desktop",
+      appIconPath,
+      appIconIndex: 0,
+      relaunchCommand: app.isPackaged
+        ? `"${process.execPath}"`
+        : `"${process.execPath}" "${app.getAppPath()}"`,
+      relaunchDisplayName: "Notes for Windows",
+    });
+    mainWindow.setIcon(nativeImage.createFromPath(appIconPath));
+  }
+  mainWindow.once("ready-to-show", () => {
+    if (app.isPackaged || process.env.NOTES_TEST_HEADLESS !== "1")
+      mainWindow.show();
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mainWindow.webContents.on("will-navigate", (event) => event.preventDefault());

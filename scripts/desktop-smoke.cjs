@@ -2,6 +2,64 @@ const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const assert = require("node:assert/strict");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
+const runFile = promisify(execFile);
+
+async function assertWindowBranding(app, dir) {
+  if (process.platform !== "win32") return;
+  const outputDirectory = path.join(dir, "window-branding");
+  const nativeWindow = await app.evaluate(({ BrowserWindow }) => ({
+    handle: BrowserWindow.getAllWindows()[0].getNativeWindowHandle().readBigUInt64LE().toString(),
+    processId: process.pid,
+    executable: process.execPath,
+  }));
+  await runFile("powershell.exe", [
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", path.resolve("scripts/read-window-branding.ps1"),
+    "-ProcessId", String(nativeWindow.processId),
+    "-WindowHandle", nativeWindow.handle,
+    "-OutputDirectory", outputDirectory,
+  ], { timeout: 20000 });
+  const result = JSON.parse(
+    (await fs.readFile(path.join(outputDirectory, "window-branding.json"), "utf8"))
+      .replace(/^\uFEFF/, ""),
+  );
+  const windows = Array.isArray(result) ? result : [result];
+  const window = windows.find((entry) => entry.AppUserModelId === "com.notesforwindows.desktop");
+  assert.ok(window, "The running Notes window must declare its taskbar app ID");
+  assert.deepEqual(window.Errors, []);
+  const expectedIcon = path.resolve("dist/icon.ico");
+  assert.equal(window.RelaunchIconResource.toLowerCase(), `${expectedIcon},0`.toLowerCase());
+  assert.equal(window.RelaunchDisplayNameResource, "Notes for Windows");
+  const executable = nativeWindow.executable;
+  assert.equal(window.RelaunchCommand, `"${executable}" "${path.resolve(".")}"`);
+  for (const size of ["Large", "Small"]) {
+    assert.match(window[`${size}IconSource`], /^WM_GETICON\//);
+    assert.ok(window[`${size}IconPath`], `The window needs a ${size.toLowerCase()} icon`);
+  }
+  const iconPixels = await app.evaluate(({ nativeImage }, files) => files.map((file) => {
+    const image = nativeImage.createFromPath(file);
+    const pixels = image.toBitmap();
+    let opaque = 0, yellow = 0, cream = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      // Electron's native bitmap order is BGRA on Windows.
+      const [blue, green, red, alpha] = pixels.subarray(i, i + 4);
+      if (alpha > 200) {
+        opaque++;
+        if (red > 160 && green > 100 && blue < 120) yellow++;
+        if (red > 190 && green > 180 && blue > 130) cream++;
+      }
+    }
+    return { size: image.getSize(), opaque, yellow, cream };
+  }), [window.LargeIconPath, window.SmallIconPath]);
+  for (const icon of iconPixels) {
+    assert.ok(icon.opaque > 0 && icon.size.width >= 16 && icon.size.height >= 16);
+    assert.ok(icon.yellow / icon.opaque > 0.025, "The running icon needs the original yellow header");
+    assert.ok(icon.cream / icon.opaque > 0.45, "The running icon needs the original cream paper, not Electron's atom");
+  }
+  console.log("Native window taskbar identity, relaunch metadata, and original icon pixels: PASS");
+}
 async function main() {
   const dir = path.resolve("test-results/desktop-" + Date.now());
   await fs.mkdir(dir, { recursive: true });
@@ -26,6 +84,7 @@ async function main() {
         console.log("Renderer:", msg.text().slice(0, 250));
     });
     await page.getByLabel("Note title").waitFor();
+    await assertWindowBranding(app, dir);
     assert.equal(
       await page.getByLabel("Note title").inputValue(),
       "A little room for big ideas",
