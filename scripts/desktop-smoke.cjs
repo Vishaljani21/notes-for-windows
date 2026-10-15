@@ -49,6 +49,20 @@ async function main() {
     console.log(
       "Desktop renderer, secure protocol, IPC saving, and reload: PASS",
     );
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByLabel("Interface font", { exact: true }).selectOption("roboto");
+    await page.getByLabel("Note font", { exact: true }).selectOption("lora");
+    const fontFaces = await page.evaluate(async () => ({
+      interface: (await document.fonts.load('400 16px "Roboto"')).length,
+      note: (await document.fonts.load('400 16px "Lora"')).length,
+    }));
+    assert.ok(fontFaces.interface > 0 && fontFaces.note > 0);
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.getByText("All changes saved", { exact: true }).waitFor();
+    saved = JSON.parse(await fs.readFile(path.join(dir, "notes-data.json"), "utf8"));
+    assert.equal(saved.settings.fontFamily, "roboto");
+    assert.equal(saved.settings.noteFontFamily, "lora");
+    console.log("Desktop bundled font loading and font preference saving: PASS");
     await page.getByRole("button", { name: "Lock note", exact: true }).click();
     await page.getByLabel("Password", { exact: true }).fill("desktop-test-password");
     await page.getByLabel("Confirm password", { exact: true }).fill("desktop-test-password");
