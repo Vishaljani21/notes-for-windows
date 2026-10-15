@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4 — 2026-10-16
+
+- Made the native taskbar icon check allow Windows diagnostic startup and first-time C# compilation on clean release runners, with progress diagnostics for failures.
+- Includes the running taskbar icon fix from 1.1.3.
+
 ## 1.1.3 — 2026-10-16
 
 - Explicitly assigned the original Notes icon and relaunch identity to the running Windows taskbar button, in addition to Desktop and Start menu shortcuts.

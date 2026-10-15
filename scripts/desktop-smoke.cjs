@@ -6,6 +6,19 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const runFile = promisify(execFile);
 
+async function brandingPowerShell() {
+  const programFiles = process.env.ProgramW6432 || process.env.ProgramFiles;
+  const candidates = [
+    ...(programFiles ? [path.join(programFiles, "PowerShell/7/pwsh.exe")] : []),
+    ...(process.env.PATH || "").split(path.delimiter)
+      .filter(Boolean).map((directory) => path.join(directory, "pwsh.exe")),
+  ];
+  for (const candidate of candidates) {
+    try { await fs.access(candidate); return candidate; } catch {}
+  }
+  return "powershell.exe";
+}
+
 async function assertWindowBranding(app, dir) {
   if (process.platform !== "win32") return;
   const outputDirectory = path.join(dir, "window-branding");
@@ -14,13 +27,20 @@ async function assertWindowBranding(app, dir) {
     processId: process.pid,
     executable: process.execPath,
   }));
-  await runFile("powershell.exe", [
+  const powershell = await brandingPowerShell();
+  console.log(`Checking native window branding with ${powershell}`);
+  const probe = runFile(powershell, [
     "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
     "-File", path.resolve("scripts/read-window-branding.ps1"),
     "-ProcessId", String(nativeWindow.processId),
     "-WindowHandle", nativeWindow.handle,
+    "-Diagnostics",
     "-OutputDirectory", outputDirectory,
-  ], { timeout: 20000 });
+  // Clean Windows runners may need a cold CLR/Roslyn startup. Keep a bounded
+  // minute for that startup and forward stages so a stall identifies its cause.
+  ], { timeout: 60000, windowsHide: true });
+  probe.child.stderr.on("data", (chunk) => process.stderr.write(chunk));
+  await probe;
   const result = JSON.parse(
     (await fs.readFile(path.join(outputDirectory, "window-branding.json"), "utf8"))
       .replace(/^\uFEFF/, ""),

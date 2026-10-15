@@ -2,9 +2,17 @@ param(
   [int[]]$ProcessId = @(),
   [string]$ProcessName = 'Notes for Windows',
   [long]$WindowHandle = 0,
+  [switch]$Diagnostics,
   [string]$OutputDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'test-results\window-branding')
 )
 $ErrorActionPreference = 'Stop'
+$notesProbeTimer = [Diagnostics.Stopwatch]::StartNew()
+function Write-NotesBrandingProgress([string]$Stage) {
+  if ($Diagnostics) {
+    [Console]::Error.WriteLine(('Window branding [{0:N1}s]: {1}' -f $notesProbeTimer.Elapsed.TotalSeconds, $Stage))
+  }
+}
+Write-NotesBrandingProgress ('started in PowerShell ' + $PSVersionTable.PSVersion)
 # Read only the app's window metadata and icon pixels. No window titles, client
 # area pixels, note data, window activation, or shell cache changes are involved.
 $notesTargets = if ($ProcessId.Count) {
@@ -15,8 +23,10 @@ $notesTargets = if ($ProcessId.Count) {
 if (-not $notesTargets.Count) { throw "No matching process is running: $ProcessName" }
 $notesOutputPath = [IO.Path]::GetFullPath($OutputDirectory)
 [IO.Directory]::CreateDirectory($notesOutputPath) | Out-Null
+Write-NotesBrandingProgress 'target process and output directory ready'
 
 if (-not ('NotesWindowBrandingProbe' -as [type])) {
+  Write-NotesBrandingProgress 'compiling native metadata reader'
   $notesReferences = if ($PSVersionTable.PSEdition -eq 'Core') {
     @((Get-ChildItem -LiteralPath (Join-Path $PSHOME 'ref') -Filter '*.dll').FullName) + @([System.Drawing.Icon].Assembly.Location) + @((Get-ChildItem -LiteralPath $PSHOME -Filter 'System.Private.Windows*.dll').FullName)
   } else { @('System.dll', 'System.Core.dll', 'System.Drawing.dll') }
@@ -184,7 +194,10 @@ public static class NotesWindowBrandingProbe {
 }
 '@
 }
+Write-NotesBrandingProgress 'reading native window properties and icon pixels'
 $notesWindowBranding = @([NotesWindowBrandingProbe]::Read([int[]]$notesTargets.Id, $notesOutputPath, $WindowHandle))
+Write-NotesBrandingProgress ('read ' + $notesWindowBranding.Count + ' matching window(s)')
 $notesReportPath = Join-Path $notesOutputPath 'window-branding.json'
 ConvertTo-Json -InputObject $notesWindowBranding -Depth 5 | Set-Content -LiteralPath $notesReportPath -Encoding UTF8
+Write-NotesBrandingProgress 'saved metadata report'
 $notesWindowBranding

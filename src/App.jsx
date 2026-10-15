@@ -2603,7 +2603,7 @@ function DialogContent({
         {heading(
           Settings,
           "Make a little space your own",
-          "Notes for Windows · Version 1.1.3",
+          "Notes for Windows · Version 1.1.4",
         )}
         <div className="settings-section">
           <h3>Appearance</h3>
