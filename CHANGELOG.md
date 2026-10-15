@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.6 — 2026-10-16
+
+- Fixed the Electron taskbar icon caused by a development shortcut sharing the installed Notes app identity.
+- Separated development and installed Windows app identities, and repaired the conflicting development shortcut during local updates.
+- Includes the persistent reminder popup and reminder delivery fixes from 1.1.5.
+
 ## 1.1.5 — 2026-10-16
 
 - Fixed reminders being marked delivered before an alert was displayed.

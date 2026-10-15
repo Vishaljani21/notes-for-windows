@@ -54,6 +54,10 @@ foreach ($notesLinkPath in @($notesDesktopLink, $notesStartLink)) {
   $notesLink.Save()
   [NotesShortcutIconRefresh]::SHChangeNotify(0x00002000, 0x0005, $notesLinkPath, [IntPtr]::Zero)
 }
+# Native notification tests in an unpackaged Electron process can leave a
+# development shortcut carrying the installed app's identity. Separate only a
+# link verified to target this project's Electron binary; preserve all others.
+& (Join-Path $PSScriptRoot 'repair-development-shortcut.ps1') | Out-Null
 $notesNewProcess = Start-Process -FilePath $notesInstalledExe -WorkingDirectory $notesInstallDir -PassThru
 Start-Sleep -Seconds 2
 $notesNewProcess.Refresh()

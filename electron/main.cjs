@@ -18,6 +18,11 @@ const { pathToFileURL } = require("node:url");
 const { createReminderScheduler } = require("./reminders.cjs");
 const { createReminderAlerts } = require("./reminder-alert.cjs");
 const { createReminderDelivery } = require("./reminder-delivery.cjs");
+// Windows uses this identity to choose the taskbar group's name and icon.
+// Development Electron must not register its shortcut as the installed app.
+const appUserModelId = app.isPackaged
+  ? "com.notesforwindows.desktop"
+  : "com.notesforwindows.development";
 const appIconPath =
   process.platform === "win32" && app.isPackaged
     ? path.join(process.resourcesPath, "icons/notes-original.ico")
@@ -218,7 +223,7 @@ for (const action of ["minimize", "maximize", "close"])
   });
 app.whenReady().then(() => {
   if (!ownsInstance || quitRequested) return;
-  app.setAppUserModelId("com.notesforwindows.desktop");
+  app.setAppUserModelId(appUserModelId);
   reminderAlerts = createReminderAlerts({
     iconPath: appIconPath,
     onOpen: openReminderNote,
@@ -300,7 +305,7 @@ app.whenReady().then(() => {
     // The running taskbar button has its own relaunch metadata. Explicitly
     // associate it with the installed Notes icon rather than Electron's defaults.
     mainWindow.setAppDetails({
-      appId: "com.notesforwindows.desktop",
+      appId: appUserModelId,
       appIconPath,
       appIconIndex: 0,
       relaunchCommand: app.isPackaged

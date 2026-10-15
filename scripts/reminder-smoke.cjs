@@ -32,14 +32,14 @@ async function waitFor(check, message, timeout = 15000) {
   throw new Error(message);
 }
 
-async function alertPage(instance) {
+async function alertPage(instance, timeout = 15000) {
   return waitFor(async () => {
     for (const page of instance.windows()) {
       if (page.isClosed()) continue;
       if (await page.getByRole("button", { name: /^Open note(s)?$/i }).count())
         return page;
     }
-  }, "The reminder popup did not render");
+  }, "The reminder popup did not render", timeout);
 }
 
 async function main() {
@@ -98,14 +98,27 @@ async function main() {
       window.desktop.onReminder((event) => window.__reminderEvents.push(event));
       window.desktop.onOpenNote((id) => window.__openedNotes.push(id));
     });
-    const scheduled = await page.evaluate(async () => {
-      const data = await window.desktop.load();
-      data.notes[0].reminderAt = Date.now() + 500;
-      data.notes[0].reminderNotifiedAt = null;
-      await window.desktop.save(data);
-      return { noteId: data.notes[0].id, reminderAt: data.notes[0].reminderAt };
-    });
-    const reminderPopup = await alertPage(instance);
+    // Schedule through the real editor. Saving directly through IPC would leave
+    // React holding the original fixture date; its next autosave could silently
+    // overwrite the native scheduler's test date before the replay assertion.
+    await page.getByRole("button", { name: "Set reminder", exact: true }).click();
+    const scheduled = await page.evaluate((noteId) => {
+      const reminderAt = Math.ceil((Date.now() + 5000) / 60000) * 60000;
+      const date = new Date(reminderAt);
+      const pad = (value) => String(value).padStart(2, "0");
+      const inputValue = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      return { noteId, reminderAt, inputValue };
+    }, library.notes[0].id);
+    await page.getByLabel("Date and time", { exact: true }).fill(scheduled.inputValue);
+    await page.getByRole("button", { name: "Save reminder", exact: true }).click();
+    await waitFor(async () => {
+      const saved = JSON.parse(await fs.readFile(path.join(dir, "notes-data.json"), "utf8"));
+      return saved.notes.find((note) => note.id === scheduled.noteId)?.reminderAt === scheduled.reminderAt;
+    }, "The editor did not save the selected reminder time");
+    const reminderPopup = await alertPage(
+      instance,
+      Math.max(15000, scheduled.reminderAt - Date.now() + 15000),
+    );
     assert.match(await reminderPopup.locator("body").innerText(), /A little room for big ideas/);
     assert.equal(await instance.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().some((window) =>
@@ -149,8 +162,16 @@ async function main() {
     );
     console.log("Visible Notes reminder popup, confirmed receipt, and Open note routing: PASS");
 
+    // Wait for the delivery marker to complete the renderer's autosave as well
+    // as the native receipt. This guards against the stale-date CI regression.
+    const savedDelivery = await waitFor(async () => {
+      const saved = JSON.parse(await fs.readFile(path.join(dir, "notes-data.json"), "utf8"));
+      const note = saved.notes.find((item) => item.id === scheduled.noteId);
+      return note?.reminderNotifiedAt >= scheduled.reminderAt && note;
+    }, "The delivered reminder did not round-trip through the editor save");
+    assert.equal(savedDelivery.reminderAt, scheduled.reminderAt);
     const replay = await page.evaluate((id) => window.desktop.retryReminder(id), scheduled.noteId);
-    assert.equal(replay.ok, true);
+    assert.equal(replay.ok, true, replay.error);
     const repeatedPopup = await alertPage(instance);
     await page.waitForFunction(() => window.__reminderEvents.length === 2);
     await repeatedPopup.getByRole("button", { name: "Dismiss", exact: true }).click();

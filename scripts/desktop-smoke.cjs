@@ -46,8 +46,8 @@ async function assertWindowBranding(app, dir) {
       .replace(/^\uFEFF/, ""),
   );
   const windows = Array.isArray(result) ? result : [result];
-  const window = windows.find((entry) => entry.AppUserModelId === "com.notesforwindows.desktop");
-  assert.ok(window, "The running Notes window must declare its taskbar app ID");
+  const window = windows.find((entry) => entry.AppUserModelId === "com.notesforwindows.development");
+  assert.ok(window, "Development Notes must use a separate taskbar identity from the installed app");
   assert.deepEqual(window.Errors, []);
   const expectedIcon = path.resolve("dist/icon.ico");
   assert.equal(window.RelaunchIconResource.toLowerCase(), `${expectedIcon},0`.toLowerCase());
