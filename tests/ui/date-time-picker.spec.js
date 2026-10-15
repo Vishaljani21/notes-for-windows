@@ -94,6 +94,12 @@ test("calendar keyboard navigation and Escape stay inside the reminder workflow"
     name: "Choose date and time",
     exact: true,
   });
+  await expect(
+    picker.getByRole("gridcell", {
+      name: "Monday, January 31, 2028",
+      exact: true,
+    }),
+  ).toBeFocused();
   await page.keyboard.press("PageDown");
   await expect(
     picker.getByRole("gridcell", {
