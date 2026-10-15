@@ -164,6 +164,36 @@ test("locks, decrypts, edits, and re-locks without leaving content plaintext in 
   await page.getByLabel("Note content").fill("A revised secret.");
   await menu(page, "Note lock options", "Close this locked note");
   await expect(page.locator(".locked-screen")).toBeVisible();
+  // The locked screen appears before the debounced save commits.
+  const { decryptNote } = await import("../../src/lib.mjs");
+  await expect.poll(async () => {
+    const saved = await page.evaluate(() => new Promise((resolve, reject) => {
+      const request = indexedDB.open("notes-for-windows", 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const read = database.transaction("library").objectStore("library").get("data");
+        read.onerror = () => { database.close(); reject(read.error); };
+        read.onsuccess = () => {
+          database.close();
+          resolve(read.result?.notes.find((note) => note.id === "welcome"));
+        };
+      };
+    }));
+    if (!saved?.encrypted) return null;
+    const payload = await decryptNote(saved.encrypted, "abcdef123");
+    return {
+      locked: saved.locked,
+      content: saved.content,
+      tags: saved.tags,
+      decrypted: payload.content,
+    };
+  }).toEqual({
+    locked: true,
+    content: "",
+    tags: [],
+    decrypted: expect.stringContaining("A revised secret."),
+  });
   await page.reload();
   await page.getByRole("button", { name: "Unlock note", exact: true }).click();
   await page.getByLabel("Password", { exact: true }).fill("abcdef123");
